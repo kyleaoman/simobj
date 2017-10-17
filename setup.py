@@ -9,7 +9,7 @@ setup(
     author_email='koman@astro.rug.nl',
     license='',
     packages=['simobj'],
-    install_requires=['numpy', 'astropy', 'simfiles'],
+    install_requires=['numpy', 'astropy', 'simfiles', 'utilities'],
     include_package_data=True,
     zip_safe=False
 )
