@@ -5,10 +5,34 @@ import os
 
 #Use (import) SimObj *not* _SimObj.
 
+def do_recenter(func):
+    def func_wrapper(*args, **kwargs):
+        if key in self.recenter.keys():
+            self._F.load(self.recenter[key])
+            centres = self._F[self.recenter[key]]
+            centre_mask = self.masks[self._F.extractors[self.recenter[key]].keytype]
+            centre = centres[centre_mask]
+            self[key] -= centre
+            self._F[self.recenter[key]]
+        return self[key]
+    return func_wrapper
+
+def do_box_wrap(func):
+    def func_wrapper(*args, **kwargs):
+        if key in self.box_wrap.keys():
+            loaded_keys.update(self._F.load(self.box_wrap[key]))
+            Lbox = self._F[self.box_wrap[key]]
+            self[key][self[key] > Lbox / 2.] -= Lbox
+            self[key][self[key] < -Lbox / 2.] += Lbox
+            self._F[self.box_wrap[key]]
+        return self[key]
+    return func_wrapper
+
 class _SimObj(dict):
-    def __init__(self, snap_id, obj_id, mask_type=None, mask_args={}, cache_prefix='./', disable_cache=False, configfile=None):
+    def __init__(self, obj_id, snap_id, mask_type=None, mask_args={}, configfile=None, simfiles_configfile=None, cache_prefix='./', disable_cache=False):
         
-        self._path = prefix + '/' + 'SimObjCache_' + #string conversion of snap_id, obj_id, mask_info??
+        self._path = prefix + '/' + 'SimObjCache_' #+ string conversion of snap_id, obj_id, mask_info?
+
         if not disable_cache:
             if os.path.exists(self._path + '.lock'):
                 raise RuntimeError("SimObj '" + self._path + ".pkl' is locked by another instance.")
@@ -18,19 +42,39 @@ class _SimObj(dict):
         if os.path.exists(self._path + '.pkl') and not disable_cache:
             D, = loadvars(self._path)
             self.update(D)
-            self._F._init_extractors()
+            self._F._read_config()
 
         else:
             self.snap_id = snap_id
             self.obj_id = obj_id
+            self.configfile = configfile
+            self._read_config()
             self.mask_type, self.mask_args = mask_type, mask_args
 
-            self._F = SimFiles(snap_id, configfile=configfile)
+            self._F = SimFiles(snap_id, configfile=simfiles_configfile)
             self._define_masks()
             if not diable_cache:
                 self._cache()
 
         return
+
+    def _read_config():
+        
+        config = dict()
+        try:
+            execfile(self.configfile, config)
+        except IOError:
+            raise IOError("SimObj: configfile '" + self.configfile + "' not found.")
+
+        try:
+            self.recenter = config['recenter']
+        except KeyError:
+            self.recenter = dict()
+
+        try:
+            self.box_wrap = config['box_wrap']
+        except KeyError:
+            self.box_wrap = dict()
 
     def __setattr__(self, key, value):
         return self.__setitem__(key, value)
@@ -75,29 +119,20 @@ class _SimObj(dict):
         for k in loaded_keys:
             del self._F[k]
         return
-
+    
+    @do_recenter
+    @do_box_wrap
     def _load_key(self, key):
 
         if key not in self._F.fields():
             raise KeyError
 
-        loaded_keys = set()
-
-        loaded_keys.update(self._F.load((key, )))
-        self[key] = self._F[key][self.masks[self._F._extractors[key].keytype]]
-
-        if key.split('_')[0] == 'xyz':
-            loaded_keys.update(self._F.load('Lbox', 'cops'))
-            self[key] -= self._F.cops[self.masks[self._F._extractors['cops'].keytype]]
-            self[key][self[key] > self._F.Lbox / 2.] -= self._F.Lbox
-            self[key][self[key] < -self._F.Lbox / 2.] += self._F.Lbox
-        elif key.split('_')[0] == 'vxyz':
-            loaded_keys.update(self._F.load(('vcents',)))
-            self[key] -= self._F.vcents[self.masks[self._F._extractors['vcents'].keytype]]
-
-        for k in loaded_keys:
-            del self._F[k]
-
+        self._F.load((key, ))
+        mask = self.masks[self._F._extractors[key].keytype]
+        self[key] = self._F[key][mask]
+            
+        del self._F[key]
+            
         self._cache()
 
         return self[key]
@@ -105,9 +140,9 @@ class _SimObj(dict):
     def _cache(self):
         if not self._locked:
             raise RuntimeError("SimObj does not own lock on cache (is it being used outside a 'with ... as ...' block?).")
-        del self._F['_extractors'], self._F['_snapshots'], self._F['_snapshot']
+        del self._F['_extractors'], self._F['_snapshot']
         savevars([self], self._path + '.pkl')
-        self._F._read_config(self._F.snap_id, self._F.configfile)
+        self._F._read_config()
         return
 
     def _lock(self):
