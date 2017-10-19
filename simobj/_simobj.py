@@ -18,9 +18,9 @@ def do_recenter(func):
     def func_wrapper(self, key):
         self[key] = func(self, key)
         if key in self.recenter.keys():
-            self._F.load(self.recenter[key])
+            self._F.load(keys=(self.recenter[key], ))
             centres = self._F[self.recenter[key]]
-            centre_mask = self.masks[self._F.extractors[self.recenter[key]].keytype]
+            centre_mask = self.masks[self._F._extractors[self.recenter[key]].keytype]
             centre = self._use_mask(centres, centre_mask)
             apply_recenter(self[key], centre)
             del self._F[self.recenter[key]]
@@ -31,7 +31,7 @@ def do_box_wrap(func):
     def func_wrapper(self, key):
         self[key] = func(self, key)
         if key in self.box_wrap.keys():
-            loaded_keys.update(self._F.load(self.box_wrap[key]))
+            self._F.load(keys=(self.box_wrap[key], ))
             Lbox = self._F[self.box_wrap[key]]
             apply_box_wrap(self[key], Lbox)
             del self._F[self.box_wrap[key]]
@@ -42,16 +42,17 @@ class _SimObj(dict):
     def __init__(self, obj_id, snap_id, mask_type=None, mask_args=None, mask_kwargs=None, configfile=None, simfiles_configfile=None, cache_prefix='./', disable_cache=False):
         
         self._locked = False
+        self.disable_cache = disable_cache
 
         self._path = cache_prefix + '/' + 'SimObjCache_' #+ string conversion of snap_id, obj_id, mask_info?
 
-        if not disable_cache:
+        if not self.disable_cache:
             if os.path.exists(self._path + '.lock'):
                 raise RuntimeError("SimObj '" + self._path + ".pkl' is locked by another instance.")
             else:
                 self._lock()
 
-        if os.path.exists(self._path + '.pkl') and not disable_cache:
+        if os.path.exists(self._path + '.pkl') and not self.disable_cache:
             D, = loadvars(self._path)
             self.update(D)
             self._F._read_config()
@@ -68,7 +69,7 @@ class _SimObj(dict):
 
             self._read_config()
 
-            if not disable_cache:
+            if not self.disable_cache:
                 self._cache()
 
         return
@@ -119,15 +120,16 @@ class _SimObj(dict):
     def _load_key(self, key):
         
         if key not in self._F.fields():
-            raise KeyError
+            raise KeyError("SimObj: SimFiles member unaware of '"+key+"' key.")
 
         self._F.load((key, ))
         mask = self.masks[self._F._extractors[key].keytype]
         self[key] = self._use_mask(self._F[key], mask)
             
         del self._F[key]
-            
-        self._cache()
+
+        if not self.disable_cache:
+            self._cache()
 
         return self[key]
 
