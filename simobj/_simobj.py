@@ -5,6 +5,15 @@ import os
 
 #Use (import) SimObj *not* _SimObj.
 
+def apply_box_wrap(coords, length):
+    coords[coords > length / 2.] -= length
+    coords[coords < -length / 2.] += length
+    return
+
+def apply_recenter(coords, centre):
+    coords -= centre
+    return
+
 def do_recenter(func):
     def func_wrapper(self, key):
         self[key] = func(self, key)
@@ -12,8 +21,8 @@ def do_recenter(func):
             self._F.load(self.recenter[key])
             centres = self._F[self.recenter[key]]
             centre_mask = self.masks[self._F.extractors[self.recenter[key]].keytype]
-            centre = centres[centre_mask]
-            self[key] -= centre
+            centre = self._use_mask(centres, centre_mask)
+            apply_recenter(self[key], centre)
             del self._F[self.recenter[key]]
         return self[key]
     return func_wrapper
@@ -24,15 +33,13 @@ def do_box_wrap(func):
         if key in self.box_wrap.keys():
             loaded_keys.update(self._F.load(self.box_wrap[key]))
             Lbox = self._F[self.box_wrap[key]]
-            self[key][self[key] > Lbox / 2.] -= Lbox
-            self[key][self[key] < -Lbox / 2.] += Lbox
+            apply_box_wrap(self[key], Lbox)
             del self._F[self.box_wrap[key]]
         return self[key]
     return func_wrapper
 
-
 class _SimObj(dict):
-    def __init__(self, obj_id, snap_id, mask_type=None, mask_args={}, configfile=None, simfiles_configfile=None, cache_prefix='./', disable_cache=False):
+    def __init__(self, obj_id, snap_id, mask_type=None, mask_args=None, mask_kwargs=None, configfile=None, simfiles_configfile=None, cache_prefix='./', disable_cache=False):
         
         self._locked = False
 
@@ -52,11 +59,15 @@ class _SimObj(dict):
         else:
             self.snap_id = snap_id
             self.obj_id = obj_id
-            self.mask_type, self.mask_args = mask_type, mask_args
+            self.mask_type = mask_type
+            self.mask_args = tuple() if mask_args is None else mask_args
+            self.mask_kwargs = dict() if mask_kwargs is None else mask_kwargs
             self.configfile = configfile
-            self._read_config()
 
             self._F = SimFiles(snap_id, configfile=simfiles_configfile)
+
+            self._read_config()
+
             if not disable_cache:
                 self._cache()
 
@@ -81,9 +92,14 @@ class _SimObj(dict):
             self.box_wrap = dict()
 
         try:
-            self.masks = config['masks']
+            config['masks']
         except KeyError:
             raise ValueError("SimObj: configfile missing 'masks' definition.")
+        self.masks = dict()
+        for key, value in config['masks'].items():
+            if type(value) is dict:
+                value = value[self.mask_type]
+            self.masks[key] = value(self._F, *self.mask_args, **self.mask_kwargs)
 
     def __setattr__(self, key, value):
         return self.__setitem__(key, value)
@@ -107,13 +123,16 @@ class _SimObj(dict):
 
         self._F.load((key, ))
         mask = self.masks[self._F._extractors[key].keytype]
-        self[key] = self._F[key][mask]
+        self[key] = self._use_mask(self._F[key], mask)
             
         del self._F[key]
             
         self._cache()
 
         return self[key]
+
+    def _use_mask(self, data, mask):
+        return data[mask] if mask is not None else data
 
     def _cache(self):
         if not self._locked:
