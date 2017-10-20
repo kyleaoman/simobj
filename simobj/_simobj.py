@@ -67,17 +67,18 @@ class _SimObj(dict):
         self._locked = False
         
         self._read_config()
-        self._path = self.init_args['cache_prefix'] + '/' + 'SimObjCache_' + self.cache_string(**self.init_args)
+        self._path = self.init_args['cache_prefix'] + '/' + 'SimObjCache_' + self._cache_string(**self.init_args)
 
         if not self.init_args['disable_cache']:
             if os.path.exists(self._path + '.lock'):
-                raise RuntimeError("SimObj '" + self._path + ".pkl' is locked by another instance.")
+                raise RuntimeError(self._path + ".pkl' is locked by another instance.")
             else:
                 self._lock()
 
         if os.path.exists(self._path + '.pkl') and not self.init_args['disable_cache']:
             D, = loadvars(self._path)
             self.update(D)
+            self._read_config()
             self._F._read_config()
 
         else:
@@ -97,7 +98,7 @@ class _SimObj(dict):
             raise IOError("SimObj: configfile '" + self.init_args['configfile'] + "' not found.")
 
         try:
-            self.cache_string = config['cache_string']
+            self._cache_string = config['cache_string']
         except KeyError:
             raise valueError("SimObj: configfile missing 'cache_string' definition.")
             
@@ -115,13 +116,15 @@ class _SimObj(dict):
             config['masks']
         except KeyError:
             raise ValueError("SimObj: configfile missing 'masks' definition.")
-        self.maskfuncs = dict()
+        self._maskfuncs = dict()
         for key, maskfunc in config['masks'].items():
-            self.maskfuncs[key] = maskfunc[self.init_args['mask_type']] if type(self.init_args['maskfunc']) is dict else maskfunc
+            self._maskfuncs[key] = maskfunc[self.init_args['mask_type']] if type(maskfunc) is dict else maskfunc
 
     def _init_masks(self):
-        for key, maskfunc in self.maskfuncs.items():
-            self.masks[] = maskfunc(self._F, *self.init_args['mask_args'], **self.init_args['mask_kwargs'])
+        self.masks = dict()
+        for key, maskfunc in self._maskfuncs.items():
+            self.masks[key] = maskfunc(self._F, *self.init_args['mask_args'], **self.init_args['mask_kwargs'])
+        return
 
     def __setattr__(self, key, value):
         return self.__setitem__(key, value)
@@ -150,6 +153,7 @@ class _SimObj(dict):
         del self._F[key]
 
         if not self.init_args['disable_cache']:
+            print key
             self._cache()
 
         return self[key]
@@ -160,8 +164,9 @@ class _SimObj(dict):
     def _cache(self):
         if not self._locked:
             raise RuntimeError("SimObj does not own lock on cache (is it being used outside a 'with ... as ...' block?).")
-        del self._F['_extractors'], self._F['_snapshot']
+        del self['_maskfuncs'], self['_cache_string'], self._F['_extractors'], self._F['_snapshot']
         savevars([self], self._path + '.pkl')
+        self._read_config()
         self._F._read_config()
         return
 

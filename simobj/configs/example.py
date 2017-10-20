@@ -1,6 +1,8 @@
 from collections import namedtuple
 
 def cache_string(**kwargs):
+    snap_id = kwargs['snap_id']
+    obj_id = kwargs['obj_id']
     return '_'.join((
         str(snap_id.res),
         str(snap_id.phys),
