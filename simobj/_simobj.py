@@ -5,6 +5,18 @@ import os
 
 #Use (import) SimObj *not* _SimObj.
 
+def usevals(names):
+    def usevals_decorator(func):
+        def func_wrapper(*args, **kwargs):
+            loaded_keys = set()
+            loaded_keys.update(args[0].load(names))
+            retval = func(*args, **kwargs)
+            for k in loaded_keys:
+                del args[0][k]
+            return retval
+        return func_wrapper
+    return usevals_decorator
+
 def apply_box_wrap(coords, length):
     coords[coords > length / 2.] -= length
     coords[coords < -length / 2.] += length

@@ -1,29 +1,17 @@
 from collections import namedtuple
-
-def usevals(names):
-    def usevals_decorator(func):
-        def func_wrapper(*args, **kwargs):
-            loaded_keys = set()
-            loaded_keys.update(args[0].load(names))
-            retval = func(*args, **kwargs)
-            for k in loaded_keys:
-                del args[0][k]
-            return retval
-        return func_wrapper
-    return usevals_decorator
         
-
-#define object unique id tuple format
-obj_id = namedtuple('obj_id', ['fof', 'sub'])
-
+#define suffix mnemonics for EAGLE/APOSTLE particle types
 T = ['g', 'dm', 'b2', 'b3', 's', 'bh']
 
 recenter = {pos_vel[0] + '_' + t: pos_vel[1] for pos_vel in [('xyz', 'cops'), ('vxyz', 'vcents')] for t in T}
 
 box_wrap = {'xyz_' + t: 'Lbox' for t in T}
 
+# The functions below are written with an obj_id such as the following in mind:
+# obj_id = namedtuple('obj_id', ['fof', 'sub'])
+
 import numpy as np
-from simobj._simobj import apply_recenter, apply_box_wrap
+from simobj import apply_recenter, apply_box_wrap, usevals
 
 masks = {}
 
@@ -62,6 +50,8 @@ def particle_mask_fof(ptype):
         return vals['ng_'+ptype] == obj_id.fof
     return mask
 
+# For an aperture mask use snapshot files to ensure inclusion of *all* particles within aperture, this
+# requires manual handling of loading/unloading keys instead of using '@usevals'.
 def particle_mask_aperture(ptype):
     def mask(vals, obj_id, aperture=None):
         key = 'xyz_'+ptype
