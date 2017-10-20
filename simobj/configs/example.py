@@ -1,5 +1,15 @@
 from collections import namedtuple
-        
+
+def cache_string(**kwargs):
+    return '_'.join((
+        str(snap_id.res),
+        str(snap_id.phys),
+        str(snap_id.vol),
+        str(snap_id.snap),
+        str(obj_id.fof),
+        str(obj_id.sub)
+    ))
+
 #define suffix mnemonics for EAGLE/APOSTLE particle types
 T = ['g', 'dm', 'b2', 'b3', 's', 'bh']
 

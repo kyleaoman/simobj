@@ -53,35 +53,37 @@ def do_box_wrap(func):
 class _SimObj(dict):
     def __init__(self, obj_id, snap_id, mask_type=None, mask_args=None, mask_kwargs=None, configfile=None, simfiles_configfile=None, cache_prefix='./', disable_cache=False):
         
+        self.init_args = dict()
+        self.init_args['obj_id'] = obj_id
+        self.init_args['snap_id'] = snap_id
+        self.init_args['mask_type'] = mask_type
+        self.init_args['mask_args'] = tuple() if mask_args is None else mask_args
+        self.init_args['mask_kwargs'] = dict() if mask_kwargs is None else mask_kwargs
+        self.init_args['configfile'] = configfile
+        self.init_args['simfiles_configfile'] = simfiles_configfile
+        self.init_args['cache_prefix'] = cache_prefix
+        self.init_args['disable_cache'] = disable_cache
+
         self._locked = False
-        self.disable_cache = disable_cache
+        
+        self._read_config()
+        self._path = self.init_args['cache_prefix'] + '/' + 'SimObjCache_' + self.cache_string(**self.init_args)
 
-        self._path = cache_prefix + '/' + 'SimObjCache_' #+ string conversion of snap_id, obj_id, mask_info?
-
-        if not self.disable_cache:
+        if not self.init_args['disable_cache']:
             if os.path.exists(self._path + '.lock'):
                 raise RuntimeError("SimObj '" + self._path + ".pkl' is locked by another instance.")
             else:
                 self._lock()
 
-        if os.path.exists(self._path + '.pkl') and not self.disable_cache:
+        if os.path.exists(self._path + '.pkl') and not self.init_args['disable_cache']:
             D, = loadvars(self._path)
             self.update(D)
             self._F._read_config()
 
         else:
-            self.snap_id = snap_id
-            self.obj_id = obj_id
-            self.mask_type = mask_type
-            self.mask_args = tuple() if mask_args is None else mask_args
-            self.mask_kwargs = dict() if mask_kwargs is None else mask_kwargs
-            self.configfile = configfile
-
-            self._F = SimFiles(snap_id, configfile=simfiles_configfile)
-
-            self._read_config()
-
-            if not self.disable_cache:
+            self._F = SimFiles(self.init_args['snap_id'], configfile=self.init_args['simfiles_configfile'])
+            self._init_masks()
+            if not self.init_args['disable_cache']:
                 self._cache()
 
         return
@@ -90,10 +92,15 @@ class _SimObj(dict):
         
         config = dict()
         try:
-            execfile(self.configfile, config)
+            execfile(self.init_args['configfile'], config)
         except IOError:
-            raise IOError("SimObj: configfile '" + self.configfile + "' not found.")
+            raise IOError("SimObj: configfile '" + self.init_args['configfile'] + "' not found.")
 
+        try:
+            self.cache_string = config['cache_string']
+        except KeyError:
+            raise valueError("SimObj: configfile missing 'cache_string' definition.")
+            
         try:
             self.recenter = config['recenter']
         except KeyError:
@@ -108,11 +115,13 @@ class _SimObj(dict):
             config['masks']
         except KeyError:
             raise ValueError("SimObj: configfile missing 'masks' definition.")
-        self.masks = dict()
-        for key, value in config['masks'].items():
-            if type(value) is dict:
-                value = value[self.mask_type]
-            self.masks[key] = value(self._F, *self.mask_args, **self.mask_kwargs)
+        self.maskfuncs = dict()
+        for key, maskfunc in config['masks'].items():
+            self.maskfuncs[key] = maskfunc[self.init_args['mask_type']] if type(self.init_args['maskfunc']) is dict else maskfunc
+
+    def _init_masks(self):
+        for key, maskfunc in self.maskfuncs.items():
+            self.masks[] = maskfunc(self._F, *self.init_args['mask_args'], **self.init_args['mask_kwargs'])
 
     def __setattr__(self, key, value):
         return self.__setitem__(key, value)
@@ -140,7 +149,7 @@ class _SimObj(dict):
             
         del self._F[key]
 
-        if not self.disable_cache:
+        if not self.init_args['disable_cache']:
             self._cache()
 
         return self[key]
