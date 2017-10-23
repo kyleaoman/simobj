@@ -22,6 +22,14 @@ box_wrap = {'xyz_' + t: 'Lbox' for t in T}
 # The functions below are written with an obj_id such as the following in mind:
 # obj_id = namedtuple('obj_id', ['fof', 'sub'])
 
+extractor_edits = [
+    (
+        lambda E, A: ('particle' in E.keytype) and (A['mask_type'] == 'aperture'),
+        'filetype',
+        'snapshot'
+    )
+]
+
 import numpy as np
 from simobj import apply_recenter, apply_box_wrap, usevals
 
@@ -75,7 +83,6 @@ def particle_mask_aperture(ptype):
         cube = (np.abs(vals[key]) < aperture).all(axis=1)
         retval = np.zeros(vals[key].shape[0], dtype=np.bool)
         retval[cube] = np.sum(np.power(vals[key][cube], 2), axis=1) < np.power(aperture, 2)
-        #need to force reading from snapshot files, can't use extractors because cache will re-read config files and overwrite changes!
         for k in loaded_keys:
             del vals[k]
         return retval

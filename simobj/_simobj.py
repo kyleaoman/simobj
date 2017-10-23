@@ -29,29 +29,29 @@ def apply_recenter(coords, centre):
 def do_recenter(func):
     def func_wrapper(self, key):
         self[key] = func(self, key)
-        if key in self.recenter.keys():
-            self._F.load(keys=(self.recenter[key], ))
-            centres = self._F[self.recenter[key]]
-            centre_mask = self.masks[self._F._extractors[self.recenter[key]].keytype]
+        if key in self._recenter.keys():
+            self._F.load(keys=(self._recenter[key], ))
+            centres = self._F[self._recenter[key]]
+            centre_mask = self._masks[self._F._extractors[self._recenter[key]].keytype]
             centre = self._use_mask(centres, centre_mask)
             apply_recenter(self[key], centre)
-            del self._F[self.recenter[key]]
+            del self._F[self._recenter[key]]
         return self[key]
     return func_wrapper
 
 def do_box_wrap(func):
     def func_wrapper(self, key):
         self[key] = func(self, key)
-        if key in self.box_wrap.keys():
-            self._F.load(keys=(self.box_wrap[key], ))
-            Lbox = self._F[self.box_wrap[key]]
+        if key in self._box_wrap.keys():
+            self._F.load(keys=(self._box_wrap[key], ))
+            Lbox = self._F[self._box_wrap[key]]
             apply_box_wrap(self[key], Lbox)
-            del self._F[self.box_wrap[key]]
+            del self._F[self._box_wrap[key]]
         return self[key]
     return func_wrapper
 
 class _SimObj(dict):
-    def __init__(self, obj_id, snap_id, mask_type=None, mask_args=None, mask_kwargs=None, configfile=None, simfiles_configfile=None, cache_prefix='./', disable_cache=False):
+    def __init__(self, obj_id=None, snap_id=None, mask_type=None, mask_args=None, mask_kwargs=None, configfile=None, simfiles_configfile=None, cache_prefix='./', disable_cache=False):
         
         self.init_args = dict()
         self.init_args['obj_id'] = obj_id
@@ -80,9 +80,11 @@ class _SimObj(dict):
             self.update(D)
             self._read_config()
             self._F._read_config()
+            self._edit_extractors()
 
         else:
             self._F = SimFiles(self.init_args['snap_id'], configfile=self.init_args['simfiles_configfile'])
+            self._edit_extractors()
             self._init_masks()
             if not self.init_args['disable_cache']:
                 self._cache()
@@ -103,14 +105,19 @@ class _SimObj(dict):
             raise valueError("SimObj: configfile missing 'cache_string' definition.")
             
         try:
-            self.recenter = config['recenter']
+            self._recenter = config['recenter']
         except KeyError:
-            self.recenter = dict()
+            self._recenter = dict()
 
         try:
-            self.box_wrap = config['box_wrap']
+            self._box_wrap = config['box_wrap']
         except KeyError:
-            self.box_wrap = dict()
+            self._box_wrap = dict()
+
+        try:
+            self._extractor_edits = config['extractor_edits']
+        except KeyError:
+            self._extractor_edits = list()
 
         try:
             config['masks']
@@ -121,9 +128,9 @@ class _SimObj(dict):
             self._maskfuncs[key] = maskfunc[self.init_args['mask_type']] if type(maskfunc) is dict else maskfunc
 
     def _init_masks(self):
-        self.masks = dict()
+        self._masks = dict()
         for key, maskfunc in self._maskfuncs.items():
-            self.masks[key] = maskfunc(self._F, *self.init_args['mask_args'], **self.init_args['mask_kwargs'])
+            self._masks[key] = maskfunc(self._F, *self.init_args['mask_args'], **self.init_args['mask_kwargs'])
         return
 
     def __setattr__(self, key, value):
@@ -147,13 +154,12 @@ class _SimObj(dict):
             raise KeyError("SimObj: SimFiles member unaware of '"+key+"' key.")
 
         self._F.load((key, ))
-        mask = self.masks[self._F._extractors[key].keytype]
+        mask = self._masks[self._F._extractors[key].keytype]
         self[key] = self._use_mask(self._F[key], mask)
             
         del self._F[key]
 
         if not self.init_args['disable_cache']:
-            print key
             self._cache()
 
         return self[key]
@@ -164,10 +170,11 @@ class _SimObj(dict):
     def _cache(self):
         if not self._locked:
             raise RuntimeError("SimObj does not own lock on cache (is it being used outside a 'with ... as ...' block?).")
-        del self['_maskfuncs'], self['_cache_string'], self._F['_extractors'], self._F['_snapshot']
+        del self['_maskfuncs'], self['_cache_string'], self['_extractor_edits'], self._F['_extractors'], self._F['_snapshot']
         savevars([self], self._path + '.pkl')
         self._read_config()
         self._F._read_config()
+        self._edit_extractors()
         return
 
     def _lock(self):
@@ -178,6 +185,13 @@ class _SimObj(dict):
     def _unlock(self):
         self._locked = False
         os.remove(self._path + '.lock')
+        return
+
+    def _edit_extractors(self):
+        for condition, field, value in self._extractor_edits:
+            for key, extractor in self._F._extractors.items():
+                if condition(extractor, self.init_args):
+                    self._F._extractors[key] = extractor._replace(**{field: value})
         return
 
 class SimObj:
