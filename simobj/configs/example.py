@@ -34,7 +34,7 @@ def cache_string(**kwargs):
     obj_id = kwargs['obj_id']
     mask_type = kwargs['mask_type']
     mask_kwargs = kwargs['mask_kwargs']
-    mask_suffix = '_' + mask_kwargs['aperture'] if mask_type == 'aperture' else ''
+    mask_suffix = '_' + str(mask_kwargs['aperture'].to('kpc').value) if mask_type == 'aperture' else ''
     return '_'.join((
         str(snap_id.res),
         str(snap_id.phys),
