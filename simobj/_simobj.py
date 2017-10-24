@@ -75,7 +75,7 @@ class _SimObj(dict):
             else:
                 self._lock()
 
-        if os.path.exists(self._path + '.pkl') and not self.init_args['disable_cache']:
+        if (not self.init_args['disable_cache']) and os.path.exists(self._path + '.pkl'):
             D, = loadvars(self._path)
             self.update(D)
             self._read_config()
@@ -102,7 +102,10 @@ class _SimObj(dict):
         try:
             self._cache_string = config['cache_string']
         except KeyError:
-            raise valueError("SimObj: configfile missing 'cache_string' definition.")
+            if not self.init_args['disable_cache']:
+                raise valueError("SimObj: configfile missing 'cache_string' definition.")
+            else:
+                pass
             
         try:
             self._recenter = config['recenter']
