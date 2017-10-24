@@ -51,7 +51,18 @@ def do_box_wrap(func):
     return func_wrapper
 
 class _SimObj(dict):
-    def __init__(self, obj_id=None, snap_id=None, mask_type=None, mask_args=None, mask_kwargs=None, configfile=None, simfiles_configfile=None, cache_prefix='./', disable_cache=False):
+    def __init__(
+            self, 
+            obj_id=None, 
+            snap_id=None, 
+            mask_type=None,
+            mask_args=None,
+            mask_kwargs=None, 
+            configfile=None,
+            simfiles_configfile=None, 
+            cache_prefix='./', 
+            disable_cache=False
+    ):
         
         self.init_args = dict()
         self.init_args['obj_id'] = obj_id
@@ -67,7 +78,8 @@ class _SimObj(dict):
         self._locked = False
         
         self._read_config()
-        self._path = self.init_args['cache_prefix'] + '/' + 'SimObjCache_' + self._cache_string(**self.init_args)
+        self._path = self.init_args['cache_prefix'] + '/' + \
+                     'SimObjCache_' + self._cache_string(**self.init_args)
 
         if not self.init_args['disable_cache']:
             if os.path.exists(self._path + '.lock'):
@@ -83,7 +95,10 @@ class _SimObj(dict):
             self._edit_extractors()
 
         else:
-            self._F = SimFiles(self.init_args['snap_id'], configfile=self.init_args['simfiles_configfile'])
+            self._F = SimFiles(
+                self.init_args['snap_id'], 
+                configfile=self.init_args['simfiles_configfile']
+            )
             self._edit_extractors()
             self._init_masks()
             if not self.init_args['disable_cache']:
@@ -128,12 +143,17 @@ class _SimObj(dict):
             raise ValueError("SimObj: configfile missing 'masks' definition.")
         self._maskfuncs = dict()
         for key, maskfunc in config['masks'].items():
-            self._maskfuncs[key] = maskfunc[self.init_args['mask_type']] if type(maskfunc) is dict else maskfunc
+            self._maskfuncs[key] = maskfunc[self.init_args['mask_type']] if type(maskfunc) is dict \
+                                   else maskfunc
 
     def _init_masks(self):
         self._masks = dict()
         for key, maskfunc in self._maskfuncs.items():
-            self._masks[key] = maskfunc(self._F, *self.init_args['mask_args'], **self.init_args['mask_kwargs'])
+            self._masks[key] = maskfunc(
+                self._F, 
+                *self.init_args['mask_args'], 
+                **self.init_args['mask_kwargs']
+            )
         return
 
     def __setattr__(self, key, value):
@@ -172,8 +192,10 @@ class _SimObj(dict):
 
     def _cache(self):
         if not self._locked:
-            raise RuntimeError("SimObj does not own lock on cache (is it being used outside a 'with ... as ...' block?).")
-        del self['_maskfuncs'], self['_cache_string'], self['_extractor_edits'], self._F['_extractors'], self._F['_snapshot']
+            raise RuntimeError("SimObj does not own lock on cache \
+            (is it being used outside a 'with ... as ...' block?).")
+        del self['_maskfuncs'], self['_cache_string'], self['_extractor_edits'], \
+            self._F['_extractors'], self._F['_snapshot']
         savevars([self], self._path + '.pkl')
         self._read_config()
         self._F._read_config()
