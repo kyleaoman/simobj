@@ -1,5 +1,5 @@
 from simfiles import SimFiles
-from utilities.slvars import savevars, loadvars
+from kyleaoman_utilities.slvars import savevars, loadvars
 import numpy as np
 import os
 
