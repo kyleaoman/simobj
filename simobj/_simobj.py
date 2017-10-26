@@ -2,6 +2,7 @@ from simfiles import SimFiles
 from kyleaoman_utilities.slvars import savevars, loadvars
 import numpy as np
 import os
+from importlib.util import spec_from_file_location, module_from_spec
 
 #Use (import) SimObj *not* _SimObj.
 
@@ -108,41 +109,43 @@ class _SimObj(dict):
 
     def _read_config(self):
         
-        config = dict()
         try:
-            execfile(self.init_args['configfile'], config)
-        except IOError:
-            raise IOError("SimObj: configfile '" + self.init_args['configfile'] + "' not found.")
+            spec = spec_from_file_location('config', self.init_args['configfile'])
+            config = module_from_spec(spec)
+            spec.loader.exec_module(config)
+        except FileNotFoundError:
+            raise FileNotFoundError("SimObj: configfile '" + self.init_args['configfile'] + \
+                                    "' not found.")
 
         try:
-            self._cache_string = config['cache_string']
-        except KeyError:
-            if not self.init_args['disable_cache']:
+            self._cache_string = config.cache_string
+        except AttributeError:
+            if not self.init_args.disable_cache:
                 raise valueError("SimObj: configfile missing 'cache_string' definition.")
             else:
                 pass
             
         try:
-            self._recenter = config['recenter']
-        except KeyError:
+            self._recenter = config.recenter
+        except AttributeError:
             self._recenter = dict()
 
         try:
-            self._box_wrap = config['box_wrap']
-        except KeyError:
+            self._box_wrap = config.box_wrap
+        except AttributeError:
             self._box_wrap = dict()
 
         try:
-            self._extractor_edits = config['extractor_edits']
-        except KeyError:
+            self._extractor_edits = config.extractor_edits
+        except AttributeError:
             self._extractor_edits = list()
 
         try:
-            config['masks']
-        except KeyError:
+            config.masks
+        except AttributeError:
             raise ValueError("SimObj: configfile missing 'masks' definition.")
         self._maskfuncs = dict()
-        for key, maskfunc in config['masks'].items():
+        for key, maskfunc in config.masks.items():
             self._maskfuncs[key] = maskfunc[self.init_args['mask_type']] if type(maskfunc) is dict \
                                    else maskfunc
 
