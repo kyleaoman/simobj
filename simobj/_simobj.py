@@ -10,10 +10,10 @@ def usevals(names):
     def usevals_decorator(func):
         def func_wrapper(*args, **kwargs):
             loaded_keys = set()
-            loaded_keys.update(args[0].load(names))
+            loaded_keys.update(kwargs['vals'].load(names))
             retval = func(*args, **kwargs)
             for k in loaded_keys:
-                del args[0][k]
+                del kwargs['vals'][k]
             return retval
         return func_wrapper
     return usevals_decorator
@@ -153,9 +153,8 @@ class _SimObj(dict):
         self._masks = dict()
         for key, maskfunc in self._maskfuncs.items():
             self._masks[key] = maskfunc(
-                self._F, 
                 *self.init_args['mask_args'], 
-                **self.init_args['mask_kwargs']
+                **(dict({'vals': self._F}, **self.init_args['mask_kwargs']))
             )
         return
 
