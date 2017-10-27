@@ -117,17 +117,16 @@ extractor_edits = [
 #
 # The details of the function of course depend sensitively on the details of the simulation and/or
 # group finding algorithm used. All masks, however, share some common properties:
-#   - The function must take as its first two arguments (1) a label which will be pointed to the
-#     SimObj object, which will allow access to any required tables/values and (2) the obj_id.
-#   - The parameters mask_args and mask_kwargs passed to initialize the SimObj instance will be passed
-#     as further arguments and keyword arguments, respectively; the functions should be prepared to
-#     receive these, if applicable. In this example, no mask_args are expected, but mask_kwargs is
-#     expected to be {'aperture': <Quantity>}.
+#   - The function will receive as arguments and keyword arguments the values of the parameters
+#     mask_args and mask_kwargs, respectively, used to initialize the SimObj instance. The functions
+#     should be prepared to receive these. In this example, one mask_arg is exepcted: the obj_id. The
+#     aperture mask also expects a keyword argument: aperture.
 #   - Functions may make use of the @usevals(names) function decorator. This should contain a list of
 #     any keys to extractors which the function may make use of. These will be explicitly loaded using
-#     simfiles, then unloaded at the end of the mask function call. Within the function they may be
-#     accessed as attributes or dict entries of the first function argument (see first bullet point
-#     above). Explicitly no values may be specified as @usevals(tuple()).
+#     simfiles, then unloaded at the end of the mask function call. If the decorator is used, the 
+#     function should accept one additional keyword argument 'vals=None'. The data can then be accessed 
+#     within the function as attributes or dict entries of 'vals'. Explicitly no values may be specified
+#     as @usevals(tuple()), though this is not required.
 #   - Functions may either return a boolean array which will be used to mask tables loaded via
 #     simfiles, or None, in which case no mask will be applied.
 #
@@ -142,23 +141,23 @@ from simobj import usevals
 
 def particle_mask_fof(ptype):
     if ptype in ['b2', 'b3']:
-        return lambda vals, obj_id: None
+        return lambda obj_id, vals=None: None
     @usevals(('ng_'+ptype, ))
-    def mask(vals, obj_id, aperture=None):
+    def mask(obj_id, vals=None):
         return vals['ng_'+ptype] == obj_id.fof
     return mask
 
 def particle_mask_fofsub(ptype):
     if ptype in ['b2', 'b3']:
-        return lambda vals, obj_id: None
+        return lambda obj_id, vals=None: None
     @usevals(('ng_'+ptype, 'nsg_'+ptype))
-    def mask(vals, obj_id, aperture=None):
+    def mask(obj_id, vals=None):
         return np.logical_and(vals['ng_'+ptype] == obj_id.fof, vals['nsg_'+ptype] == obj_id.sub)
     return mask
 
 def particle_mask_aperture(ptype):
     @usevals(('xyz_'+ptype, ))
-    def mask(vals, obj_id, aperture=None):
+    def mask(obj_id, vals=None, aperture=None):
         key = 'xyz_'+ptype
         cube = (np.abs(vals[key]) < aperture).all(axis=1)
         retval = np.zeros(vals[key].shape[0], dtype=np.bool)
@@ -167,22 +166,22 @@ def particle_mask_aperture(ptype):
     return mask
 
 @usevals(('gns', 'sgns'))
-def group_mask(vals, obj_id, aperture=None):
+def group_mask(obj_id, vals=None):
     return np.logical_and(vals.gns == obj_id.fof, vals.sgns == obj_id.sub)
 
 @usevals(('nfof', ))
-def fof_mask(vals, obj_id, aperture=None):
+def fof_mask(obj_id, vals=None):
     return np.arange(1, vals.nfof + 1) == obj_id.fof
 
 @usevals(('offID', 'nID'))
-def id_mask(vals, obj_id, aperture=None):
+def id_mask(obj_id, vals=None):
     gmask = group_mask(vals, obj_id)
     start = vals.offID[gmask][0]
     end = start + vals.nID[gmask][0]
     return np.s_[start:end]
 
 @usevals(tuple())
-def header_mask(vals, obj_id, aperture=None):
+def header_mask(obj_id, vals=None):
     return None
 
 #-----------------------------------------------------------------------------------------------------
