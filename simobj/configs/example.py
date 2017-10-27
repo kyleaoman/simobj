@@ -177,8 +177,8 @@ def fof_mask(vals, obj_id, aperture=None):
 @usevals(('offID', 'nID'))
 def id_mask(vals, obj_id, aperture=None):
     gmask = group_mask(vals, obj_id)
-    start = vals.offID[gmask]
-    end = start + vals.nID[gmask]
+    start = vals.offID[gmask][0]
+    end = start + vals.nID[gmask][0]
     return np.s_[start:end]
 
 @usevals(tuple())
