@@ -34,7 +34,8 @@ def cache_string(**kwargs):
     obj_id = kwargs['obj_id']
     mask_type = kwargs['mask_type']
     mask_kwargs = kwargs['mask_kwargs']
-    mask_suffix = '_' + str(mask_kwargs['aperture'].to('kpc').value) if mask_type == 'aperture' else ''
+    mask_suffix = '_' + str(int(mask_kwargs['aperture'].to('kpc').value)) if mask_type == 'aperture' \
+                  else ''
     return '_'.join((
         str(snap_id.res),
         str(snap_id.phys),
@@ -143,7 +144,7 @@ def particle_mask_fof(ptype):
     if ptype in ['b2', 'b3']:
         return lambda obj_id, vals=None: None
     @usevals(('ng_'+ptype, ))
-    def mask(obj_id, vals=None):
+    def mask(obj_id, vals=None, **kwargs):
         return vals['ng_'+ptype] == obj_id.fof
     return mask
 
@@ -151,7 +152,7 @@ def particle_mask_fofsub(ptype):
     if ptype in ['b2', 'b3']:
         return lambda obj_id, vals=None: None
     @usevals(('ng_'+ptype, 'nsg_'+ptype))
-    def mask(obj_id, vals=None):
+    def mask(obj_id, vals=None, **kwargs):
         return np.logical_and(vals['ng_'+ptype] == obj_id.fof, vals['nsg_'+ptype] == obj_id.sub)
     return mask
 
@@ -166,22 +167,22 @@ def particle_mask_aperture(ptype):
     return mask
 
 @usevals(('gns', 'sgns'))
-def group_mask(obj_id, vals=None):
+def group_mask(obj_id, vals=None, **kwargs):
     return np.logical_and(vals.gns == obj_id.fof, vals.sgns == obj_id.sub)
 
 @usevals(('nfof', ))
-def fof_mask(obj_id, vals=None):
+def fof_mask(obj_id, vals=None, **kwargs):
     return np.arange(1, vals.nfof + 1) == obj_id.fof
 
 @usevals(('offID', 'nID'))
-def id_mask(obj_id, vals=None):
-    gmask = group_mask(vals, obj_id)
+def id_mask(obj_id, vals=None, **kwargs):
+    gmask = group_mask(obj_id, vals=vals, **kwargs)
     start = vals.offID[gmask][0]
     end = start + vals.nID[gmask][0]
     return np.s_[start:end]
 
 @usevals(tuple())
-def header_mask(obj_id, vals=None):
+def header_mask(obj_id, vals=None, **kwargs):
     return None
 
 #-----------------------------------------------------------------------------------------------------
