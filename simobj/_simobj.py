@@ -110,7 +110,7 @@ class _SimObj(dict):
     def _read_config(self):
         
         try:
-            spec = spec_from_file_location('config', self.init_args['configfile'])
+            spec = spec_from_file_location('config', os.path.expanduser(self.init_args['configfile']))
             config = module_from_spec(spec)
             spec.loader.exec_module(config)
         except FileNotFoundError:
