@@ -171,8 +171,8 @@ class _SimObj(dict):
         value = self[key] = self._load_key(key)
         return value
     
-    @do_recenter
     @do_box_wrap
+    @do_recenter
     def _load_key(self, key):
         
         if key not in self._F.fields():
