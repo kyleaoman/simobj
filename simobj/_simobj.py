@@ -100,7 +100,7 @@ class _SimObj(dict):
         else:
             self._F = SimFiles(
                 self.init_args['snap_id'], 
-                configfile=self.init_args['simfiles_configfile']
+                configfile=self.init_args['simfiles_configfile'],
                 ncpu=self.init_args['ncpu']
             )
             self._edit_extractors()
