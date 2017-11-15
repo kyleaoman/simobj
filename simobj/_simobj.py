@@ -62,7 +62,8 @@ class _SimObj(dict):
             configfile=None,
             simfiles_configfile=None, 
             cache_prefix='./', 
-            disable_cache=False
+            disable_cache=False,
+            ncpu=0
     ):
         
         self.init_args = dict()
@@ -75,6 +76,7 @@ class _SimObj(dict):
         self.init_args['simfiles_configfile'] = simfiles_configfile
         self.init_args['cache_prefix'] = cache_prefix
         self.init_args['disable_cache'] = disable_cache
+        self.init_args['ncpu'] = ncpu
 
         self._locked = False
         
@@ -99,6 +101,7 @@ class _SimObj(dict):
             self._F = SimFiles(
                 self.init_args['snap_id'], 
                 configfile=self.init_args['simfiles_configfile']
+                ncpu=self.init_args['ncpu']
             )
             self._edit_extractors()
             self._init_masks()
