@@ -208,13 +208,11 @@ class _SimObj(dict):
         return
 
     def _lock(self):
-        print(self._path, 'LOCKING')
-        open(self._path + '.lock', 'a').close()
+        open(self._path + '.lock', 'x').close()
         self._locked = True
         return
 
     def _unlock(self):
-        print(self._path, 'UNLOCKING')
         os.remove(self._path + '.lock')
         self._locked = False
         return
