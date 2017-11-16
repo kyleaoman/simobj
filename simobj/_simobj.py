@@ -85,10 +85,7 @@ class _SimObj(dict):
                      'SimObjCache_' + self._cache_string(**self.init_args)
 
         if not self.init_args['disable_cache']:
-            if os.path.exists(self._path + '.lock'):
-                raise RuntimeError(self._path + ".pkl' is locked by another instance.")
-            else:
-                self._lock()
+            self._lock()
 
         if (not self.init_args['disable_cache']) and os.path.exists(self._path + '.pkl'):
             D, = loadvars(self._path)
@@ -208,8 +205,11 @@ class _SimObj(dict):
         return
 
     def _lock(self):
-        open(self._path + '.lock', 'x').close()
-        self._locked = True
+        try:
+            open(self._path + '.lock', 'x').close()
+            self._locked = True
+        except FileExistsError:
+            raise RuntimeError("Cachefile " + self._path + ".pkl' is locked by another instance.")
         return
 
     def _unlock(self):
