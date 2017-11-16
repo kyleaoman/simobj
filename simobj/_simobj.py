@@ -2,6 +2,7 @@ from simfiles import SimFiles
 from kyleaoman_utilities.slvars import savevars, loadvars
 import numpy as np
 import os
+import signal
 from importlib.util import spec_from_file_location, module_from_spec
 
 #Use (import) SimObj *not* _SimObj.
@@ -79,6 +80,7 @@ class _SimObj(dict):
         self.init_args['ncpu'] = ncpu
 
         self._locked = False
+        self._request_abort = False
         
         self._read_config()
         self._path = self.init_args['cache_prefix'] + '/' + \
@@ -198,7 +200,13 @@ class _SimObj(dict):
             (is it being used outside a 'with ... as ...' block?).")
         del self['_maskfuncs'], self['_cache_string'], self['_extractor_edits'], \
             self._F['_extractors'], self._F['_snapshot']
+        signal.signal(signal.SIGINT, self._wait_abort)
+        signal.signal(signal.SIGTERM, self._wait_abort)
         savevars([self], self._path + '.pkl')
+        if self._request_abort:
+            self._abort()
+        signal.signal(signal.SIGINT, self._abort)
+        signal.signal(signal.SIGTERM, self._abort)
         self._read_config()
         self._F._read_config()
         self._edit_extractors()
@@ -207,6 +215,8 @@ class _SimObj(dict):
     def _lock(self):
         try:
             open(self._path + '.lock', 'x').close()
+            signal.signal(signal.SIGINT, self._abort)
+            signal.signal(signal.SIGTERM, self._abort)
             self._locked = True
         except FileExistsError:
             raise RuntimeError("Cachefile " + self._path + ".pkl' is locked by another instance.")
@@ -215,6 +225,14 @@ class _SimObj(dict):
     def _unlock(self):
         os.remove(self._path + '.lock')
         self._locked = False
+        return
+
+    def _abort(self, signum, frame):
+        self._unlock()
+        exit()
+
+    def _wait_abort(self, signum, frame):
+        self._request_abort = True
         return
 
     def _edit_extractors(self):
