@@ -223,7 +223,8 @@ class _SimObj(dict):
         return
 
     def _unlock(self):
-        os.remove(self._path + '.lock')
+        if self._locked:
+            os.remove(self._path + '.lock')
         self._locked = False
         return
 
