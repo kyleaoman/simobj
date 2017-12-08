@@ -83,8 +83,7 @@ class _SimObj(dict):
         self._request_abort = False
         
         self._read_config()
-        self._path = self.init_args['cache_prefix'] + '/' + \
-                     'SimObjCache_' + self._cache_string(**self.init_args)
+        self._set_path()
 
         if not self.init_args['disable_cache']:
             self._lock()
@@ -93,6 +92,7 @@ class _SimObj(dict):
             D, = loadvars(self._path)
             self.update(D)
             self._read_config()
+            self._F.configfile = self.init_args['simfiles_configfile']
             self._F._read_config()
             self._edit_extractors()
 
@@ -107,6 +107,11 @@ class _SimObj(dict):
             if not self.init_args['disable_cache']:
                 self._cache()
 
+        return
+
+    def _set_path(self):
+        self._path = self.init_args['cache_prefix'] + '/' + \
+                     'SimObjCache_' + self._cache_string(**self.init_args)
         return
 
     def _read_config(self):
@@ -199,18 +204,21 @@ class _SimObj(dict):
             raise RuntimeError("SimObj does not own lock on cache \
             (is it being used outside a 'with ... as ...' block?).")
         del self['_maskfuncs'], self['_cache_string'], self['_extractor_edits'], \
-            self._F['_extractors'], self._F['_snapshot']
+            self._F['_extractors'], self._F['_snapshot'], self._F['configfile']
         init_args = self.init_args.copy()
-        del self['init_args']
+        path = self._path
+        del self['init_args'], self['_path']
         signal.signal(signal.SIGINT, self._wait_abort)
         signal.signal(signal.SIGTERM, self._wait_abort)
-        savevars([self], self._path + '.pkl')
+        savevars([self], path + '.pkl')
         if self._request_abort:
             self._abort()
         signal.signal(signal.SIGINT, self._abort)
         signal.signal(signal.SIGTERM, self._abort)
         self.init_args = init_args.copy()
         self._read_config()
+        self._set_path()
+        self._F.configfile = self.init_args['simfiles_configfile']
         self._F._read_config()
         self._edit_extractors()
         return
