@@ -200,6 +200,8 @@ class _SimObj(dict):
             (is it being used outside a 'with ... as ...' block?).")
         del self['_maskfuncs'], self['_cache_string'], self['_extractor_edits'], \
             self._F['_extractors'], self._F['_snapshot']
+        init_args = self.init_args.copy()
+        del self['init_args']
         signal.signal(signal.SIGINT, self._wait_abort)
         signal.signal(signal.SIGTERM, self._wait_abort)
         savevars([self], self._path + '.pkl')
@@ -207,6 +209,7 @@ class _SimObj(dict):
             self._abort()
         signal.signal(signal.SIGINT, self._abort)
         signal.signal(signal.SIGTERM, self._abort)
+        self.init_args = init_args.copy()
         self._read_config()
         self._F._read_config()
         self._edit_extractors()
