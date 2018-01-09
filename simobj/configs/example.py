@@ -138,7 +138,7 @@ extractor_edits = [
 
 #imports used in this section
 import numpy as np
-from simobj import usevals
+from simobj import usevals, apply_recenter, apply_box_wrap
 
 def particle_mask_fof(ptype):
     if ptype in ['b2', 'b3']:
@@ -157,9 +157,12 @@ def particle_mask_fofsub(ptype):
     return mask
 
 def particle_mask_aperture(ptype):
-    @usevals(('xyz_'+ptype, ))
-    def mask(obj_id, vals=None, aperture=None):
+    @usevals(('xyz_'+ptype, 'cops', 'Lbox'))
+    def mask(obj_id, vals=None, aperture=None, **kwargs):
         key = 'xyz_'+ptype
+        gmask = group_mask(obj_id, vals=vals, **kwargs)
+        apply_recenter(vals[key], vals['cops'][gmask])
+        apply_box_wrap(vals[key], vals['Lbox'])
         cube = (np.abs(vals[key]) < aperture).all(axis=1)
         retval = np.zeros(vals[key].shape[0], dtype=np.bool)
         retval[cube] = np.sum(np.power(vals[key][cube], 2), axis=1) < np.power(aperture, 2)
