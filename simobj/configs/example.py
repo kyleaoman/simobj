@@ -20,34 +20,6 @@
 #
 #-----------------------------------------------------------------------------------------------------
 
-#------------------------------------- DEFINE STRING FUNCTION ----------------------------------------
-#
-# In this portion a function called 'cache_string' must be defined. It receives all the arguments used
-# to initialize the SimObj object as keyword arguments. It should return a string which is unique to a
-# set of particular set of masks (more on masks below) to be used as the basis for the name of the
-# cache file. If disable_cache is always set to True, this function definition may be omitted.
-#
-#-----------------------------------------------------------------------------------------------------
-
-def cache_string(**kwargs):
-    snap_id = kwargs['snap_id']
-    obj_id = kwargs['obj_id']
-    mask_type = kwargs['mask_type']
-    mask_kwargs = kwargs['mask_kwargs']
-    mask_suffix = '_' + str(int(mask_kwargs['aperture'].to('kpc').value)) if mask_type == 'aperture' \
-                  else ''
-    return '_'.join((
-        str(snap_id.res),
-        str(snap_id.phys),
-        str(snap_id.vol),
-        str(snap_id.snap),
-        str(obj_id.fof),
-        str(obj_id.sub),
-        str(mask_type) + mask_suffix,
-    ))
-
-#-----------------------------------------------------------------------------------------------------
-
 #---------------------------------- RECENTER AND BOX_WRAP --------------------------------------------
 #
 # In this portion two dicts may be defined, called 'recenter' and 'box_wrap'. If these are omitted the

@@ -2,7 +2,6 @@ from simfiles import SimFiles
 from kyleaoman_utilities.slvars import savevars, loadvars
 import numpy as np
 import os
-import signal
 from importlib.util import spec_from_file_location, module_from_spec
 
 #Use (import) SimObj *not* _SimObj.
@@ -52,7 +51,14 @@ def do_box_wrap(func):
         return self[key]
     return func_wrapper
 
-class _SimObj(dict):
+class SimObj(dict):
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        return
+    
     def __init__(
             self, 
             obj_id=None, 
@@ -62,8 +68,6 @@ class _SimObj(dict):
             mask_kwargs=None, 
             configfile=None,
             simfiles_configfile=None, 
-            cache_prefix='./', 
-            disable_cache=False,
             ncpu=0
     ):
         
@@ -75,43 +79,18 @@ class _SimObj(dict):
         self.init_args['mask_kwargs'] = dict() if mask_kwargs is None else mask_kwargs
         self.init_args['configfile'] = configfile
         self.init_args['simfiles_configfile'] = simfiles_configfile
-        self.init_args['cache_prefix'] = cache_prefix
-        self.init_args['disable_cache'] = disable_cache
         self.init_args['ncpu'] = ncpu
-
-        self._locked = False
-        self._request_abort = False
         
         self._read_config()
-        self._set_path()
 
-        if not self.init_args['disable_cache']:
-            self._lock()
+        self._F = SimFiles(
+            self.init_args['snap_id'], 
+            configfile=self.init_args['simfiles_configfile'],
+            ncpu=self.init_args['ncpu']
+        )
+        self._edit_extractors()
+        self._init_masks()
 
-        if (not self.init_args['disable_cache']) and os.path.exists(self._path + '.pkl'):
-            D, = loadvars(self._path)
-            self.update(D)
-            self._read_config()
-            self._F.configfile = self.init_args['simfiles_configfile']
-            self._F._read_config()
-            self._edit_extractors()
-
-        else:
-            self._F = SimFiles(
-                self.init_args['snap_id'], 
-                configfile=self.init_args['simfiles_configfile'],
-                ncpu=self.init_args['ncpu']
-            )
-            self._edit_extractors()
-            self._init_masks()
-            if not self.init_args['disable_cache']:
-                self._cache()
-
-        return
-
-    def _set_path(self):
-        self._path = self.init_args['cache_prefix'] + '/' + \
-                     'SimObjCache_' + self._cache_string(**self.init_args)
         return
 
     def _read_config(self):
@@ -123,15 +102,7 @@ class _SimObj(dict):
         except FileNotFoundError:
             raise FileNotFoundError("SimObj: configfile '" + self.init_args['configfile'] + \
                                     "' not found.")
-
-        try:
-            self._cache_string = config.cache_string
-        except AttributeError:
-            if not self.init_args.disable_cache:
-                raise valueError("SimObj: configfile missing 'cache_string' definition.")
-            else:
-                pass
-            
+        
         try:
             self._recenter = config.recenter
         except AttributeError:
@@ -191,81 +162,14 @@ class _SimObj(dict):
             
         del self._F[key]
 
-        if not self.init_args['disable_cache']:
-            self._cache()
-
         return self[key]
 
     def _use_mask(self, data, mask):
         return data[mask] if mask is not None else data
-
-    def _cache(self):
-        if not self._locked:
-            raise RuntimeError("SimObj does not own lock on cache \
-            (is it being used outside a 'with ... as ...' block?).")
-        del self['_maskfuncs'], self['_cache_string'], self['_extractor_edits'], \
-            self._F['_extractors'], self._F['_snapshot'], self._F['configfile']
-        init_args = self.init_args.copy()
-        path = self._path
-        del self['init_args'], self['_path']
-        signal.signal(signal.SIGINT, self._wait_abort)
-        signal.signal(signal.SIGTERM, self._wait_abort)
-        savevars([self], path + '.pkl')
-        if self._request_abort:
-            self._abort()
-        signal.signal(signal.SIGINT, self._abort)
-        signal.signal(signal.SIGTERM, self._abort)
-        self.init_args = init_args.copy()
-        self._read_config()
-        self._set_path()
-        self._F.configfile = self.init_args['simfiles_configfile']
-        self._F._read_config()
-        self._edit_extractors()
-        return
-
-    def _lock(self):
-        try:
-            open(self._path + '.lock', 'x').close()
-            signal.signal(signal.SIGINT, self._abort)
-            signal.signal(signal.SIGTERM, self._abort)
-            self._locked = True
-        except FileExistsError:
-            raise RuntimeError("Cachefile " + self._path + ".pkl' is locked by another instance.")
-        return
-
-    def _unlock(self):
-        if self._locked:
-            os.remove(self._path + '.lock')
-        self._locked = False
-        return
-
-    def _abort(self, signum, frame):
-        self._unlock()
-        exit()
-
-    def _wait_abort(self, signum, frame):
-        self._request_abort = True
-        return
 
     def _edit_extractors(self):
         for condition, field, value in self._extractor_edits:
             for key, extractor in self._F._extractors.items():
                 if condition(extractor, self.init_args):
                     self._F._extractors[key] = extractor._replace(**{field: value})
-        return
-
-class SimObj:
-
-    def __enter__(self):
-        self._SO = _SimObj(*self._args, **self._kwargs)
-        return self._SO
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if self._SO._locked:
-            self._SO._unlock()
-        return
-
-    def __init__(self, *args, **kwargs):
-        self._args = args
-        self._kwargs = kwargs
         return
