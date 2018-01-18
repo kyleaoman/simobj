@@ -117,15 +117,16 @@ def particle_mask_fof(ptype):
         return lambda obj_id, vals=None: None
     @usevals(('ng_'+ptype, ))
     def mask(obj_id, vals=None, **kwargs):
-        return vals['ng_'+ptype] == obj_id.fof
+        return np.abs(vals['ng_'+ptype]) == obj_id.fof
     return mask
+
 
 def particle_mask_fofsub(ptype):
     if ptype in ['b2', 'b3']:
         return lambda obj_id, vals=None: None
     @usevals(('ng_'+ptype, 'nsg_'+ptype))
     def mask(obj_id, vals=None, **kwargs):
-        return np.logical_and(vals['ng_'+ptype] == obj_id.fof, vals['nsg_'+ptype] == obj_id.sub)
+        return np.logical_and(np.abs(vals['ng_'+ptype]) == obj_id.fof, vals['nsg_'+ptype] == obj_id.sub)
     return mask
 
 def particle_mask_aperture(ptype):
