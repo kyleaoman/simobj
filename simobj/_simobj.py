@@ -4,7 +4,32 @@ import numpy as np
 import os
 from importlib.util import spec_from_file_location, module_from_spec
 
-#Use (import) SimObj *not* _SimObj.
+def mask_to_intervals(mask, grouping_ratio=0):
+    '''
+    Takes a 1D boolean mask and converts it to a set of tuples delimiting the intervals where the mask
+    is 'True'. If the grouping ratio is set > 0, gaps between 'True' intervals which are a smaller
+    fraction of the mask array size than the grouping ratio will be concatenated. A grouping ratio of
+    1 groups all the intervals, i.e. returns the indices of the first and last 'True' values. This is
+    intended for facilitating reading somewhat contiguous data from hdf5 files; grouping minimizes the
+    number of reads, while avoiding reading entire arrays. A grouping ratio of .2 sets the maximum
+    number of reads to 5, which I think will speed up many reads without undue slowdown in
+    pathological cases, though I have not tested this empirically. If grouping is used, the chunks
+    need to be masked (with the corresponding chunks of the mask) after reading.
+    '''
+    lowers = np.argwhere(np.diff(mask.astype(np.int)) > 0) + 1
+    uppers = np.argwhere(np.diff(mask.astype(np.int)) < 0) + 1
+    if mask[0] == True:
+        lowers = np.concatenate((np.array([[0]]), lowers))
+    if mask[-1] == True:
+        uppers = np.concatenate((uppers, np.array([[mask.size]])))
+    intervals = np.hstack((lowers, uppers))
+    grouped = [tuple(intervals[0])]
+    for interval in intervals[1:]:
+        if (interval[0] - grouped[-1][1]) / mask.size < grouping_ratio:
+            grouped[-1] = (grouped[-1][0], interval[1])
+        else:
+            grouped.append(tuple(interval))
+    return grouped
 
 def usevals(names):
     def usevals_decorator(func):
@@ -34,7 +59,7 @@ def do_recenter(func):
             self._F.load(keys=(self._recenter[key], ))
             centres = self._F[self._recenter[key]]
             centre_mask = self._masks[self._F._extractors[self._recenter[key]].keytype]
-            centre = self._use_mask(centres, centre_mask)
+            centre = centres[centre_mask]
             apply_recenter(self[key], centre)
             del self._F[self._recenter[key]]
         return self[key]
@@ -156,16 +181,25 @@ class SimObj(dict):
         if key not in self._F.fields():
             raise KeyError("SimObj: SimFiles member unaware of '"+key+"' key.")
 
-        self._F.load((key, ))
         mask = self._masks[self._F._extractors[key].keytype]
-        self[key] = self._use_mask(self._F[key], mask)
+        if (mask is not None):
+            if not (mask == True).any():
+                intervals = ((0, 0), )
+            else:
+                intervals = mask_to_intervals(mask, grouping_ratio=.2)
+                parts = []
+                for interval in intervals:
+                    self._F.load((key, ), intervals=(interval, ))
+                    parts.append(self._F[key][mask[interval[0] : interval[1]]])
+                    del self._F[key]
+                self[key] = np.concatenate(parts)
             
-        del self._F[key]
+        else:
+            self._F.load((key, ))
+            self[key] = self._F[key]
+            del self._F[key]
 
         return self[key]
-
-    def _use_mask(self, data, mask):
-        return data[mask] if mask is not None else data
 
     def _edit_extractors(self):
         for condition, field, value in self._extractor_edits:
