@@ -93,7 +93,7 @@ class SimObj(dict):
             mask_kwargs=None, 
             configfile=None,
             simfiles_configfile=None, 
-            ncpu=0
+            ncpu=2
     ):
         
         self.init_args = dict()
@@ -186,7 +186,7 @@ class SimObj(dict):
             if not (mask == True).any():
                 intervals = ((0, 0), )
             else:
-                intervals = mask_to_intervals(mask, grouping_ratio=.2)
+                intervals = mask_to_intervals(mask, grouping_ratio=1)
                 parts = []
                 for interval in intervals:
                     self._F.load((key, ), intervals=(interval, ))
