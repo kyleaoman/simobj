@@ -136,9 +136,13 @@ def particle_mask_aperture(ptype):
         gmask = group_mask(obj_id, vals=vals, **kwargs)
         apply_recenter(vals[key], vals['cops'][gmask])
         apply_box_wrap(vals[key], vals['Lbox'])
-        cube = (np.abs(vals[key]) < aperture).all(axis=1)
         retval = np.zeros(vals[key].shape[0], dtype=np.bool)
-        retval[cube] = np.sum(np.power(vals[key][cube], 2), axis=1) < np.power(aperture, 2)
+        outer_cube = (np.abs(vals[key]) < aperture).all(axis=1)
+        inner_cube = np.zeros(vals[key].shape[0], dtype=np.bool)
+        inner_cube[outer_cube] = (np.abs(vals[key][outer_cube]) < aperture / np.sqrt(3)).all(axis=1)
+        need_D = np.logical_and(outer_cube, np.logical_not(inner_cube))
+        retval[inner_cube] = np.ones(np.sum(inner_cube))
+        retval[need_D] = np.sum(np.power(vals[key][need_D], 2), axis=1) < np.power(aperture, 2)
         return retval
     return mask
 
