@@ -1,5 +1,6 @@
 from simfiles import SimFiles
 from kyleaoman_utilities.slvars import savevars, loadvars
+from astropy import units as U
 import numpy as np
 import os
 from importlib.util import spec_from_file_location, module_from_spec
@@ -192,7 +193,7 @@ class SimObj(dict):
                     self._F.load((key, ), intervals=(interval, ))
                     parts.append(self._F[key][mask[interval[0] : interval[1]]])
                     del self._F[key]
-                self[key] = np.concatenate(parts)
+                self[key] = np.concatenate([part.value for part in parts]) * parts[0].unit
             
         else:
             self._F.load((key, ))
