@@ -1,6 +1,5 @@
 from simfiles import SimFiles
 from kyleaoman_utilities.slvars import savevars, loadvars
-from astropy import units as U
 import numpy as np
 import os
 from importlib.util import spec_from_file_location, module_from_spec
