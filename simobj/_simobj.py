@@ -129,7 +129,7 @@ class SimObj(dict):
             ncpu=self.init_args['ncpu']
         )
         self._edit_extractors()
-        self._masks = MaskDict()
+        self._masks = MaskDict(self)
 
         return
 
