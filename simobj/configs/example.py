@@ -159,6 +159,7 @@ def id_mask(obj_id, vals=None, **kwargs):
     gmask = group_mask(obj_id, vals=vals, **kwargs)
     start = vals.offID[gmask][0]
     end = start + vals.nID[gmask][0]
+    start, end = int(start.value), int(end.value)
     return np.s_[start:end]
 
 @usevals(tuple())

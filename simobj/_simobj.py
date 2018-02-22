@@ -85,11 +85,11 @@ class MaskDict(dict):
     def __missing__(self, key):
         if key not in self.SO._maskfuncs.keys():
             raise KeyError
-        self[key] = self.SO._maskfuncs[key](
+        value = self[key] = self.SO._maskfuncs[key](
             *self.SO.init_args['mask_args'],
             **(dict({'vals': self.SO._F}, **self.SO.init_args['mask_kwargs']))
         )
-        return self[key]
+        return value
 
 class SimObj(dict):
 
@@ -189,16 +189,21 @@ class SimObj(dict):
 
         mask = self._masks[self._F._extractors[key].keytype]
         if (mask is not None):
-            if not (mask == True).any():
+            if type(mask) == type(np.s_[:]):
+                intervals = ((mask.start, mask.stop), )
+            elif not (mask == True).any():
                 intervals = ((0, 0), )
             else:
                 intervals = mask_to_intervals(mask, grouping_ratio=1)
-                parts = []
-                for interval in intervals:
-                    self._F.load((key, ), intervals=(interval, ))
+            parts = []
+            for interval in intervals:
+                self._F.load((key, ), intervals=(interval, ))
+                if type(mask) == type(np.s_[:]):
+                    parts.append(self._F[key])
+                else:
                     parts.append(self._F[key][mask[interval[0] : interval[1]]])
-                    del self._F[key]
-                self[key] = np.concatenate([part.value for part in parts]) * parts[0].unit
+                del self._F[key]
+            self[key] = np.concatenate([part.value for part in parts]) * parts[0].unit
             
         else:
             self._F.load((key, ))
