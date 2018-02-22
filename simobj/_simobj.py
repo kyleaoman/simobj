@@ -76,6 +76,21 @@ def do_box_wrap(func):
         return self[key]
     return func_wrapper
 
+class MaskDict(dict):
+    
+    def __init__(self, SO):
+        self.SO = SO
+        return
+
+    def __missing__(self, key):
+        if key not in self.SO._maskfuncs.keys():
+            raise KeyError
+        self[key] = self.SO._maskfuncs[key](
+            *self.SO.init_args['mask_args'],
+            **(dict({'vals': self.SO._F}, **self.SO.init_args['mask_kwargs']))
+        )
+        return self[key]
+
 class SimObj(dict):
 
     def __enter__(self):
@@ -114,7 +129,7 @@ class SimObj(dict):
             ncpu=self.init_args['ncpu']
         )
         self._edit_extractors()
-        self._init_masks()
+        self._masks = MaskDict()
 
         return
 
@@ -151,15 +166,6 @@ class SimObj(dict):
         for key, maskfunc in config.masks.items():
             self._maskfuncs[key] = maskfunc[self.init_args['mask_type']] if type(maskfunc) is dict \
                                    else maskfunc
-
-    def _init_masks(self):
-        self._masks = dict()
-        for key, maskfunc in self._maskfuncs.items():
-            self._masks[key] = maskfunc(
-                *self.init_args['mask_args'], 
-                **(dict({'vals': self._F}, **self.init_args['mask_kwargs']))
-            )
-        return
 
     def __setattr__(self, key, value):
         return self.__setitem__(key, value)
