@@ -196,7 +196,7 @@ class SimObj(dict):
             raise KeyError("SimObj: SimFiles member unaware of '"+key+"' key.")
 
         mask = self._masks[self._F._extractors[key].keytype]
-        if (mask is not None):
+        if (mask is not None) and (self._F.share_mode == False):
             if type(mask) == type(np.s_[:]):
                 intervals = ((mask.start, mask.stop), )
             elif not (mask == True).any():
@@ -213,6 +213,11 @@ class SimObj(dict):
                 del self._F[key]
             self[key] = np.concatenate([part.value for part in parts]) * parts[0].unit
             
+        elif self._F.share_mode == True:
+            self._F.load((key, ))
+            self[key] = self._F[key][mask]
+            del self._F[key]
+
         else:
             self._F.load((key, ))
             self[key] = self._F[key]
