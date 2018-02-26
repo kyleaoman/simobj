@@ -107,7 +107,8 @@ class SimObj(dict):
             mask_args=None,
             mask_kwargs=None, 
             configfile=None,
-            simfiles_configfile=None, 
+            simfiles_configfile=None,
+            simfiles_instance=None,
             ncpu=2
     ):
         
@@ -118,16 +119,23 @@ class SimObj(dict):
         self.init_args['mask_args'] = tuple() if mask_args is None else mask_args
         self.init_args['mask_kwargs'] = dict() if mask_kwargs is None else mask_kwargs
         self.init_args['configfile'] = configfile
+        if (simfiles_configfile is not None) and (simfiles_instance is not None):
+            raise ValueError('Provide either simfiles_configfile or simfiles_instance, not both.')
         self.init_args['simfiles_configfile'] = simfiles_configfile
         self.init_args['ncpu'] = ncpu
         
         self._read_config()
 
-        self._F = SimFiles(
-            self.init_args['snap_id'], 
-            configfile=self.init_args['simfiles_configfile'],
-            ncpu=self.init_args['ncpu']
-        )
+        if simfiles_configfile is not None:
+            self._F = SimFiles(
+                self.init_args['snap_id'], 
+                configfile=self.init_args['simfiles_configfile'],
+                ncpu=self.init_args['ncpu']
+            )
+        elif simfiles_instance is not None:
+            self._F = simfiles_instance
+        else:
+            raise ValueError('One of simfiles_configfile or simfiles_instance is required.')
         self._edit_extractors()
         self._masks = MaskDict(self)
 
