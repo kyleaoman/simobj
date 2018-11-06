@@ -62,12 +62,12 @@ def apply_recenter(coords, centre):
 
 
 def apply_rotmat(coords, rotmat):
-    coords.dot(rotmat)
-    return
+    coords = coords.dot(rotmat)
+    return coords
 
 
 def do_recenter(func):
-    def func_wrapper(self, key):
+    def rcfunc_wrapper(self, key):
         self[key] = func(self, key)
         if key in self._recenter.keys():
             self._F.load(keys=(self._recenter[key], ))
@@ -79,11 +79,11 @@ def do_recenter(func):
             apply_recenter(self[key], centre)
             del self._F[self._recenter[key]]
         return self[key]
-    return func_wrapper
+    return rcfunc_wrapper
 
 
 def do_box_wrap(func):
-    def func_wrapper(self, key):
+    def wrapfunc_wrapper(self, key):
         self[key] = func(self, key)
         if key in self._box_wrap.keys():
             self._F.load(keys=(self._box_wrap[key], ))
@@ -91,19 +91,16 @@ def do_box_wrap(func):
             apply_box_wrap(self[key], Lbox)
             del self._F[self._box_wrap[key]]
         return self[key]
-    return func_wrapper
+    return wrapfunc_wrapper
 
 
 def do_rotate(func):
-    def func_wrapper(self, key):
+    def rotfunc_wrapper(self, key):
         self[key] = func(self, key)
-        if key in self._rotate.keys():
-            self._F.load(keys=(self._box_wrap[key], ))
-            rotmat = self.current_rot
-            apply_rotmat(self[key], rotmat)
-            del self._F[self._box_wrap[key]]
+        if key in self._coord_type.keys():
+            apply_rotmat(self[key], self.current_rot)
         return self[key]
-    return func_wrapper
+    return rotfunc_wrapper
 
 
 class MaskDict(dict):
@@ -307,8 +304,8 @@ class SimObj(dict):
 
         keys = set(self.keys()).intersection(self._coord_type.keys())
         for key in keys:
-            self[key].dot(rotmat)
-        self.current_rot = self.current_rot.dot(rotmat)
+            self[key] = apply_rotmat(self[key], do_rot)
+        self.current_rot = apply_rotmat(self.current_rot, do_rot)
 
     def translate(self, translation_type, translation):
         keys = set(self.keys()).intersection(
