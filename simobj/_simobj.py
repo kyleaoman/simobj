@@ -23,11 +23,10 @@ def mask_to_intervals(mask, grouping_ratio=0):
     '''
     lowers = np.argwhere(np.diff(mask.astype(np.int)) > 0) + 1
     uppers = np.argwhere(np.diff(mask.astype(np.int)) < 0) + 1
-    if mask[0] == True:
+    if bool(mask[0]) is True:
         lowers = np.concatenate((np.array([[0]]), lowers))
-    if mask[-1] == True:
+    if bool(mask[-1]) is True:
         uppers = np.concatenate((uppers, np.array([[mask.size]])))
-    print(lowers.shape, uppers.shape)
     intervals = np.hstack((lowers, uppers))
     grouped = [tuple(intervals[0])]
     for interval in intervals[1:]:
