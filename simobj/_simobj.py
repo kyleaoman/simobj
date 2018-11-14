@@ -23,10 +23,11 @@ def mask_to_intervals(mask, grouping_ratio=0):
     '''
     lowers = np.argwhere(np.diff(mask.astype(np.int)) > 0) + 1
     uppers = np.argwhere(np.diff(mask.astype(np.int)) < 0) + 1
-    if mask[0] is True:
+    if mask[0] == True:
         lowers = np.concatenate((np.array([[0]]), lowers))
-    if mask[-1] is True:
+    if mask[-1] == True:
         uppers = np.concatenate((uppers, np.array([[mask.size]])))
+    print(lowers.shape, uppers.shape)
     intervals = np.hstack((lowers, uppers))
     grouped = [tuple(intervals[0])]
     for interval in intervals[1:]:
@@ -217,7 +218,7 @@ class SimObj(dict):
         self._maskfuncs = dict()
         for key, maskfunc in config.masks.items():
             self._maskfuncs[key] = maskfunc[self.init_args['mask_type']] \
-                if type(maskfunc) is dict \
+                if isinstance(maskfunc, dict) \
                 else maskfunc
 
     def __setattr__(self, key, value):
@@ -241,7 +242,7 @@ class SimObj(dict):
             raise KeyError("SimObj: SimFiles member unaware of '"+key+"' key.")
 
         mask = self._masks[self._F._extractors[key].keytype]
-        if (mask is not None) and (self._F.share_mode is False):
+        if (mask is not None) and (not self._F.share_mode):
             if isinstance(mask, slice):
                 intervals = ((mask.start, mask.stop), )
             elif not mask.any():
@@ -259,7 +260,7 @@ class SimObj(dict):
             self[key] = np.concatenate([part.value for part in parts]) * \
                 parts[0].unit
 
-        elif self._F.share_mode is True:
+        elif self._F.share_mode:
             self._F.load((key, ))
             self[key] = self._F[key][mask]
             del self._F[key]
