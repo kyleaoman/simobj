@@ -30,6 +30,10 @@
 # When loaded, these coordinates will have their centroid subtracted to recenter the coordinate 
 # system.
 #
+# The keys of 'recenter_type' should be coordinates (position or velocity) keys for particle tables.
+# The corresponding values must be either 'position' or 'velocity'; this is used to determine which
+# coordinate transformations should be applied to a given coordinate array.
+#
 # Similarly, the keys of 'box_wrap' should be coordinate (position) keys for particle tables in the 
 # case of a periodic box simulation. The corresponding values should be a key pointing to the box side
 # length. Coordinate values which exceed half a box length (or are less than minus half a box length) 
@@ -42,7 +46,11 @@
 T = ['g', 'dm', 'b2', 'b3', 's', 'bh']
 
 recenter = {
-    pos_vel[0] + '_' + t: pos_vel[1] for pos_vel in [('xyz', 'cops'), ('vxyz', 'vcents')] for t in T
+    '{:s}_{:s}'.format(pos_vel[0], t): pos_vel[1] for pos_vel in [('xyz', 'cops'), ('vxyz', 'vcents')] for t in T
+}
+
+coord_type = {
+    '{:s}_{:s}'.format(pos_vel[0], t): pos_vel[1] for pos_vel in [('xyz', 'position'), ('vxyz', 'velocity')] for t in T
 }
 
 box_wrap = {'xyz_' + t: 'Lbox' for t in T}
