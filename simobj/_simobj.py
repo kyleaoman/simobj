@@ -1,9 +1,9 @@
-from simfiles import SimFiles
 import numpy as np
 import os
 from importlib.util import spec_from_file_location, module_from_spec
-from kyleaoman_utilities.L_align import L_align
 from astropy.coordinates.matrix_utilities import rotation_matrix
+from simfiles import SimFiles
+from ._L_align import L_align
 
 
 def mask_to_intervals(mask, grouping_ratio=0):
