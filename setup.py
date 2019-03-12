@@ -9,7 +9,7 @@ setup(
     author_email='koman@astro.rug.nl',
     license='GNU GPL v3',
     packages=['simobj'],
-    install_requires=['numpy', 'astropy', 'h5py', 'simfiles', 'kyleaoman_utilities'],
+    install_requires=['numpy', 'astropy', 'h5py', 'simfiles'],
     include_package_data=True,
     zip_safe=False
 )
