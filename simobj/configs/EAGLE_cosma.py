@@ -10,6 +10,13 @@ recenter = {
     [('xyz', 'cops'), ('vxyz', 'vcents')] for t in T
 }
 
+
+# keys for coordinate differentiation
+coord_type = {
+    '{:s}_{:s}'.format(pos_vel[0], t): pos_vel[1] for pos_vel in
+    [('xyz', 'position'), ('vxyz', 'velocity')] for t in T
+}
+
 # keys for box wrapping
 box_wrap = {'xyz_' + t: 'Lbox' for t in T}
 
