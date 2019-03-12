@@ -19,15 +19,15 @@ Ensure you have [`simfiles`](https://github.com/kyleaoman/simfiles) properly ins
 
 ```python
 from simobj import SimObj
-SO = SimObj(obj_id=None, snap_id=None, mask_type=None, mask_args=None, mask_kwargs=None, configfile=None, simfiles_configfile=None, simfiles_instance=None, ncpu=2):
+SO = SimObj(obj_id=None, snap_id=None, mask_type=None, mask_args=None, mask_kwargs=None, configfile=None, simfiles_configfile=None, simfiles_instance=None, ncpu=2)
 ```
 
 Initializes a `SimObj` object, representing an object/galaxy as defined in the simulation configured using the configfiles.
  - `obj_id`: (default: `None`) unique (within a snapshot) object identifier. This will be passed to user-defined functions in the `configfile`; these functions should be written with the desired `obj_id` format in mind.
  - `snap_id`: (default: `None`) unique snapshot identifier, which must be recognizable to a `SimFiles` object initialized with the `simfiles_configfile` supplied, or the `simfiles_instance` supplied.
  - `mask_type`: (default: `None`) configuration may specify multiple types of masks, specify which to use.
- - `mask_args`: (default: `None`) if mask selected takes arguments in addition to those provided by default, provide them here. Prefer keyword arguments where possible.
- - `mask_kwargs`: (default: `None`) if mask selected takes additional keyword arguments, provide them here as a `dict`.
+ - `mask_args`: (default: `tuple()`) if mask selected takes arguments in addition to those provided by default, provide them here. Prefer keyword arguments where possible.
+ - `mask_kwargs`: (default: `dict()`) if mask selected takes additional keyword arguments, provide them here as a `dict`.
  - `configfile`: (default: `None`) path to a configfile; see [example configuration](https://github.com/kyleaoman/simobj/blob/master/simobj/configs/example.py) for a description of what should be defined in this file.
  - `simfiles_configfile`: (default: `None`) path to a configfile for [`simfiles`](https://github.com/kyleaoman/simfiles); see the [example configuration](https://github.com/kyleaoman/simfiles/blob/master/simfiles/configs/example.py) for that package for a description of what should be defined in this file. Specify this parameter, or `simfiles_instance`, not both.
  - `simfiles_instance`: (default: `None`) a [`SimFiles`](https://github.com/kyleaoman/simfiles) object. Specify this parameter, or `simfiles_configfile`, not both. Providing an object instead of a configuration is useful if use of the `share_mode` option of the SimFiles object is desired - when this mode is set, data persists within the SimFiles object, which will prevent redundant reading from disk by multiple SimObj instances corresponding to multiple simulation objects which are part of an underlying simulation fileset. In other words, this should be used when looping over many objects in one simulation volume. `share_mode` should be set `False` for use with a single SimObj, or a small number (containing a small fraction of the simulation particles), to enable a different set of speed optimizations for this scenario. Note that the SimFiles object can be "shared" only in a serial sense, by one SimObj instance after another; parallel access is not supported.
