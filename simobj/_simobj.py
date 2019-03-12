@@ -7,7 +7,9 @@ from ._L_align import L_align
 
 
 def mask_to_intervals(mask, grouping_ratio=0):
-    '''
+    """
+    Convert a boolean mask to a set of 2-tuples defining index intervals.
+
     Takes a 1D boolean mask and converts it to a set of tuples delimiting the
     intervals where the mask is 'True'. If the grouping ratio is set > 0, gaps
     between 'True' intervals which are a smaller fraction of the mask array
@@ -20,7 +22,21 @@ def mask_to_intervals(mask, grouping_ratio=0):
     without undue slowdown in pathological cases, though I have not tested this
     empirically. If grouping is used, the chunks need to be masked (with the
     corresponding chunks of the mask) after reading.
-    '''
+
+    Parameters
+    ----------
+    mask : array-like
+        Boolean mask to be converted to intervals.
+
+    grouping_ratio : float
+        How much to concatenate intervals with small gaps between them.
+
+    Returns
+    -------
+    out : list
+        List of 2-tuples defining intervals.
+    """
+
     lowers = np.argwhere(np.diff(mask.astype(np.int)) > 0) + 1
     uppers = np.argwhere(np.diff(mask.astype(np.int)) < 0) + 1
     if bool(mask[0]) is True:
@@ -120,6 +136,52 @@ class MaskDict(dict):
 
 
 class SimObj(dict):
+    """
+    Code abstraction of an object from a cosmological simulation.
+
+    SimObj is a dict with added features. It provides __getattr__ and
+    __setattr__ for ease of access, and automatically loads data from files on
+    disk as needed. It can automatically mask the loaded data to isolate
+    individual "galaxies". It includes some optimizations for faster loading.
+
+    Parameters
+    ----------
+    obj_id : index
+        An identifier for a specific simulation object. The exact format is
+        defined in the configuration for the simulation in question (default:
+        None).
+
+    snap_id : index
+        An identifier for a specific simulation snapshot. The exact format is
+        defined in the configuration for the simulation in question default:
+        None).
+
+    mask_type : str
+        Key corresponding to one of the masks defined inthe configuration for
+        the simulation in question.
+
+    mask_args : tuple
+        Any arguments that must be passed to the mask function (default:
+        tuple()).
+
+    mask_kwargs : dict
+        Any keyword arguments to pass to the mask function (default: dict()).
+
+    configfile : str
+        Path to the configuration file to use (default: None).
+
+    simfiles_configfile : str
+        Path to the configuration file to use for simfiles. Provide either this
+        or a simfiles_instance, not both (default: None).
+
+    simfiles_instance : SimFiles
+        Initialized instance of SimFiles class. Provide either this or a
+        simfiles_configfile, not both. When initializing SimFiles, setting
+        the share_mode flag is recommended (default: None).
+
+    ncpu : int
+        Number of processors on which to run (default: 2).
+    """
 
     def __enter__(self):
         return self
@@ -262,7 +324,7 @@ class SimObj(dict):
         elif self._F.share_mode:
             self._F.load((key, ))
             self[key] = self._F[key][mask]
-            del self._F[key]
+            # del disabled for share_mode
 
         else:
             self._F.load((key, ))
@@ -280,6 +342,31 @@ class SimObj(dict):
         return
 
     def rotate(self, axis_angle=None, rotmat=None, L_coords=None):
+        """
+        Rotate the object.
+
+        If multiple kwargs are given, they are applied in the order of
+        (axis_angle, rotmat, L_coords). Note that L_coords will override
+        any previous rotations.
+
+        Parameters
+        ----------
+        axis_angle : tuple
+            2-tuple with an axis 'x', 'y' or 'z' and an astropy.units.Quantity
+            instance with dimensions of angle, indicating the axis to rotate
+            about and the angle to rotate through, respectively.
+
+        rotmat : array-like
+            A (3, 3) array specifying a rotation.
+
+        L_coords : tuple
+            A 3-tuple containing the keys for the mass, coordinates and
+            velocities of the particles. The coordinate system is aligned to
+            the angular momentum vector of the inner 1/3 of the particles.
+            Empirically, this often results in a good alignment to the galactic
+            disc. If finer control is needed, derive the desired rotation
+            separately and provide a rotmat instead.
+        """
 
         do_rot = np.eye(3)
 
@@ -293,7 +380,7 @@ class SimObj(dict):
             do_rot = rotmat.dot(do_rot)
 
         if L_coords is not None:
-            mkey, xkey, vkey, incl, az_rot = L_coords
+            mkey, xkey, vkey = L_coords
             do_rot = L_align(
                 self[xkey],
                 self[vkey],
@@ -306,8 +393,21 @@ class SimObj(dict):
         for key in keys:
             self[key] = apply_rotmat(self[key], do_rot)
         self.current_rot = apply_rotmat(self.current_rot, do_rot)
+        return
 
     def translate(self, translation_type, translation):
+        """
+        Translate all relevant properties of the object in either position or
+        velocity.
+
+        Parameters
+        ----------
+        translation_type : str
+            One of the coord_types defined in the configuration.
+
+        translation : astropy.units.Quantity instance
+            Amount by which to translate, with compatible units.
+        """
         keys = set(self.keys()).intersection(
             {k: v for k, v in self._coord_type.items()
              if v == translation_type}
@@ -318,5 +418,19 @@ class SimObj(dict):
         return
 
     def recenter(self, translation_type, new_centre):
+        """
+        Reposition the coordinate centre in either position or velocity.
+
+        This is implemented as a translation by the negative of the new centre.
+
+        Parameters
+        ----------
+        translation_type : str
+            One of the coord_types defined in the configuration.
+
+        new_centre : astropy.units.Quantity instance
+            Location of the new centre, with compatible units.
+        """
+
         self.translate(translation_type, -new_centre)
         return
