@@ -15,7 +15,7 @@ Software abstraction of an object from a cosmological simulation (a "galaxy"), s
  
  ## Usage:
 
-Ensure you have [`simfiles`](https://github.com/kyleaoman/simfiles) properly installed and configured for your simulation before beginning.
+Below is a quickstart guide to simobj. Ensure you have [`simfiles`](https://github.com/kyleaoman/simfiles) properly installed and configured for your simulation before beginning. You may also consult the [documentation](https://kyleaoman.github.io/simobj).
 
 ```python
 from simobj import SimObj
