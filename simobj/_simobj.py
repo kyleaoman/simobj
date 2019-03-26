@@ -286,6 +286,9 @@ class SimObj(dict):
         return self.__setitem__(key, value)
 
     def __getattr__(self, key):
+        if '__' in key:
+            # avoid requesting reserved keys from SimFiles
+            raise AttributeError
         try:
             return self.__dict__[key]
         except KeyError:
