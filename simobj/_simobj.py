@@ -93,7 +93,7 @@ def do_recenter(func):
             centres = self._F[self._recenter[key]]
             centre_mask = self._masks[
                 self._F._extractors[self._recenter[key]].keytype]
-            centre = centres[centre_mask]
+            centre = centres[centre_mask].reshape((1, 3))
             centre -= self.current_translation[self._coord_type[key]]
             apply_recenter(self[key], centre)
             del self._F[self._recenter[key]]
