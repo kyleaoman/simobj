@@ -82,7 +82,7 @@ def group_mask(obj_id, vals=None, **kwargs):
 
 @usevals(('nfof', ))
 def fof_mask(obj_id, vals=None, **kwargs):
-    return (np.array([obj_id.fof - 1], dtype=np.int), )
+    return (np.array([obj_id.fof], dtype=np.int), )
 
 
 @usevals(tuple())

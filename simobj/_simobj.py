@@ -57,7 +57,9 @@ def usevals(names):
     def usevals_decorator(func):
         def func_wrapper(*args, **kwargs):
             loaded_keys = set()
-            loaded_keys.update(kwargs['vals'].load(names))
+            loaded_keys.update(
+                kwargs['vals'].load(names, verbose=kwargs['verbose'])
+            )
             retval = func(*args, **kwargs)
             for k in loaded_keys:
                 del kwargs['vals'][k]
@@ -86,7 +88,8 @@ def do_recenter(func):
     def rcfunc_wrapper(self, key):
         self[key] = func(self, key)
         if key in self._recenter.keys():
-            self._F.load(keys=(self._recenter[key], ))
+            self._F.load(keys=(self._recenter[key], ),
+                         verbose=self.init_args['verbose'])
             centres = self._F[self._recenter[key]]
             centre_mask = self._masks[
                 self._F._extractors[self._recenter[key]].keytype]
@@ -102,7 +105,8 @@ def do_box_wrap(func):
     def wrapfunc_wrapper(self, key):
         self[key] = func(self, key)
         if key in self._box_wrap.keys():
-            self._F.load(keys=(self._box_wrap[key], ))
+            self._F.load(keys=(self._box_wrap[key], ),
+                         verbose=self.init_args['verbose'])
             Lbox = self._F[self._box_wrap[key]]
             apply_box_wrap(self[key], Lbox)
             del self._F[self._box_wrap[key]]
@@ -130,7 +134,10 @@ class MaskDict(dict):
             raise KeyError
         value = self[key] = self.SO._maskfuncs[key](
             *self.SO.init_args['mask_args'],
-            **(dict({'vals': self.SO._F}, **self.SO.init_args['mask_kwargs']))
+            **(dict(
+                {'vals': self.SO._F, 'verbose': self.SO.init_args['verbose']},
+                **self.SO.init_args['mask_kwargs']
+            ))
         )
         return value
 
@@ -199,6 +206,7 @@ class SimObj(dict):
             configfile=None,
             simfiles_configfile=None,
             simfiles_instance=None,
+            verbose=False,
             ncpu=2
     ):
         self.init_args = dict()
@@ -215,6 +223,7 @@ class SimObj(dict):
             raise ValueError('Provide either simfiles_configfile or'
                              ' simfiles_instance, not both.')
         self.init_args['simfiles_configfile'] = simfiles_configfile
+        self.init_args['verbose'] = verbose
         self.init_args['ncpu'] = ncpu
         self.current_rot = np.eye(3)
         self.current_translation = {
@@ -309,13 +318,21 @@ class SimObj(dict):
         if (mask is not None) and (not self._F.share_mode):
             if isinstance(mask, slice):
                 intervals = ((mask.start, mask.stop), )
+            elif isinstance(mask, tuple):
+                boolmask = np.zeros(mask[0].max() + 1)
+                boolmask[mask] = True
+                intervals = mask_to_intervals(
+                    boolmask,
+                    grouping_ratio=1
+                )
             elif not mask.any():
                 intervals = ((0, 0), )
             else:
                 intervals = mask_to_intervals(mask, grouping_ratio=1)
             parts = []
             for interval in intervals:
-                self._F.load((key, ), intervals=(interval, ))
+                self._F.load((key, ), intervals=(interval, ),
+                             verbose=self.init_args['verbose'])
                 if isinstance(mask, slice):
                     parts.append(self._F[key])
                 else:
@@ -325,12 +342,12 @@ class SimObj(dict):
                 parts[0].unit
 
         elif self._F.share_mode:
-            self._F.load((key, ))
+            self._F.load((key, ), verbose=self.init_args['verbose'])
             self[key] = self._F[key][mask]
             # del disabled for share_mode
 
         else:
-            self._F.load((key, ))
+            self._F.load((key, ), verbose=self.init_args['verbose'])
             self[key] = self._F[key]
             del self._F[key]
 
