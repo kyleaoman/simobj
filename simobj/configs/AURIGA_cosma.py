@@ -24,9 +24,9 @@ def particle_mask_fof(ptype):
     @usevals(('l_'+ptype, ))
     def mask(obj_id, vals=None, **kwargs):
         fmask = fof_mask(obj_id, vals=vals, **kwargs)
-        lasts = np.cumsum(vals['l_'+ptype])
+        lasts = np.cumsum(vals['l_'+ptype], dtype=np.int).value
         firsts = np.r_[0, lasts[:-1]]
-        return np.s_[firsts[fmask]: lasts[fmask]]
+        return np.s_[firsts[fmask][0]: lasts[fmask][0]]
 
     return mask
 
@@ -35,15 +35,19 @@ def particle_mask_fofsub(ptype):
     if ptype in ['b2', 'b3']:
         return lambda obj_id, vals=None: None
 
-    @usevals(('sl_'+ptype, ))
+    @usevals(('l_'+ptype, 'sl_'+ptype))
     def mask(obj_id, vals=None, **kwargs):
+        fmask = fof_mask(obj_id, vals=vals, **kwargs)
         gmask = group_mask(obj_id, vals=vals, **kwargs)
-        lasts = np.cumsum(vals['sl_'+ptype], dtype=np.int).value
-        firsts = np.r_[0, lasts[:-1]]
-        return np.s_[
-            firsts[gmask].flatten()[0]:
-            lasts[gmask].flatten()[0]
-        ]
+        fof_offs = np.cumsum(vals['l_'+ptype], dtype=np.int).value
+        fof_offs = np.r_[0, fof_offs[:-1]]
+        fof_off = fof_offs[fmask][0]
+        isub = np.argmax(gmask)
+        sub_off = np.sum(
+            vals['sl_'+ptype][isub - obj_id.sub:isub], dtype=np.int
+        )
+        sub_len = np.array(vals['sl_'+ptype], dtype=np.int)[gmask][0, 0]
+        return np.s_[fof_off + sub_off:fof_off + sub_off + sub_len]
 
     return mask
 
