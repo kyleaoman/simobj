@@ -2,6 +2,7 @@ import numpy as np
 import os
 from importlib.util import spec_from_file_location, module_from_spec
 from astropy.coordinates.matrix_utilities import rotation_matrix
+from astropy import units as U
 from simfiles import SimFiles
 from ._L_align import L_align
 
@@ -227,8 +228,8 @@ class SimObj(dict):
         self.init_args['ncpu'] = ncpu
         self.current_rot = np.eye(3)
         self.current_translation = {
-            'position': np.zeros(3),
-            'velocity': np.zeros(3)
+            'position': np.zeros(3) * U.kpc,
+            'velocity': np.zeros(3) * U.km / U.s
         }
 
         self._read_config()
@@ -434,7 +435,7 @@ class SimObj(dict):
         )
         for key in keys:
             self[key] += translation
-        self.current_translation[translation_type] += translation
+        self.current_translation[translation_type] += translation.reshape((3,))
         return
 
     def recenter(self, translation_type, new_centre):
