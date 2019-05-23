@@ -72,12 +72,12 @@ def usevals(names):
 def apply_box_wrap(coords, length):
     coords[coords > length / 2.] -= length
     coords[coords < -length / 2.] += length
-    return
+    return coords
 
 
 def apply_recenter(coords, centre):
     coords -= centre
-    return
+    return coords
 
 
 def apply_rotmat(coords, rotmat):
@@ -96,7 +96,7 @@ def do_recenter(func):
                 self._F._extractors[self._recenter[key]].keytype]
             centre = centres[centre_mask].reshape((1, 3))
             centre -= self.current_translation[self._coord_type[key]]
-            apply_recenter(self[key], centre)
+            self[key] = apply_recenter(self[key], centre)
             del self._F[self._recenter[key]]
         return self[key]
     return rcfunc_wrapper
@@ -109,7 +109,7 @@ def do_box_wrap(func):
             self._F.load(keys=(self._box_wrap[key], ),
                          verbose=self.init_args['verbose'])
             Lbox = self._F[self._box_wrap[key]]
-            apply_box_wrap(self[key], Lbox)
+            self[key] = apply_box_wrap(self[key], Lbox)
             del self._F[self._box_wrap[key]]
         return self[key]
     return wrapfunc_wrapper
