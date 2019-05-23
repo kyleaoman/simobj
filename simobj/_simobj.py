@@ -119,7 +119,7 @@ def do_rotate(func):
     def rotfunc_wrapper(self, key):
         self[key] = func(self, key)
         if key in self._coord_type.keys():
-            apply_rotmat(self[key], self.current_rot)
+            self[key] = apply_rotmat(self[key], self.current_rot)
         return self[key]
     return rotfunc_wrapper
 
