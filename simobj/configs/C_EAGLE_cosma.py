@@ -1,5 +1,5 @@
 import numpy as np
-from simobj import usevals, apply_recenter, apply_box_wrap
+from simobj import usevals, apply_translate, apply_box_wrap
 
 T = ['g', 'dm', 'b2', 'b3', 's', 'bh']
 
@@ -50,7 +50,7 @@ def particle_mask_aperture(ptype):
     def mask(obj_id, vals=None, aperture=None, **kwargs):
         key = 'xyz_'+ptype
         gmask = group_mask(obj_id, vals=vals, **kwargs)
-        apply_recenter(vals[key], vals['cops'][gmask])
+        apply_translate(vals[key], -vals['cops'][gmask])
         apply_box_wrap(vals[key], vals['Lbox'])
         retval = np.zeros(vals[key].shape[0], dtype=np.bool)
         outer_cube = (np.abs(vals[key]) < aperture).all(axis=1)

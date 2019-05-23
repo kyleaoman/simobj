@@ -2,7 +2,6 @@ import numpy as np
 import os
 from importlib.util import spec_from_file_location, module_from_spec
 from astropy.coordinates.matrix_utilities import rotation_matrix
-from astropy import units as U
 from simfiles import SimFiles
 from ._L_align import L_align
 
@@ -75,8 +74,8 @@ def apply_box_wrap(coords, length):
     return coords
 
 
-def apply_recenter(coords, centre):
-    coords -= centre
+def apply_translate(coords, offset):
+    coords += offset
     return coords
 
 
@@ -95,8 +94,7 @@ def do_recenter(func):
             centre_mask = self._masks[
                 self._F._extractors[self._recenter[key]].keytype]
             centre = centres[centre_mask].reshape((1, 3))
-            centre -= self.current_translation[self._coord_type[key]]
-            self[key] = apply_recenter(self[key], centre)
+            self[key] = apply_translate(self[key], -centre)
             del self._F[self._recenter[key]]
         return self[key]
     return rcfunc_wrapper
@@ -115,13 +113,17 @@ def do_box_wrap(func):
     return wrapfunc_wrapper
 
 
-def do_rotate(func):
-    def rotfunc_wrapper(self, key):
+def do_transform_stack(func):
+    def tsfunc_wrapper(self, key):
         self[key] = func(self, key)
         if key in self._coord_type.keys():
-            self[key] = apply_rotmat(self[key], self.current_rot)
+            for pop in self.transform_stack:
+                if pop[0] == 'T' and pop[1] == self._coord_type[key]:
+                    self[key] = apply_translate(self[key], pop[2])
+                elif pop[0] == 'R':
+                    self[key] = apply_rotmat(self[key], pop[1])
         return self[key]
-    return rotfunc_wrapper
+    return tsfunc_wrapper
 
 
 class MaskDict(dict):
@@ -226,11 +228,7 @@ class SimObj(dict):
         self.init_args['simfiles_configfile'] = simfiles_configfile
         self.init_args['verbose'] = verbose
         self.init_args['ncpu'] = ncpu
-        self.current_rot = np.eye(3)
-        self.current_translation = {
-            'position': np.zeros(3) * U.kpc,
-            'velocity': np.zeros(3) * U.km / U.s
-        }
+        self.transform_stack = list()
 
         self._read_config()
 
@@ -309,8 +307,8 @@ class SimObj(dict):
         return value
 
     @do_box_wrap
+    @do_transform_stack
     @do_recenter
-    @do_rotate
     def _load_key(self, key):
         if key not in self._F.fields():
             raise KeyError("SimObj: SimFiles member unaware of '"+key+"' key.")
@@ -413,7 +411,7 @@ class SimObj(dict):
         keys = set(self.keys()).intersection(self._coord_type.keys())
         for key in keys:
             self[key] = apply_rotmat(self[key], do_rot)
-        self.current_rot = apply_rotmat(self.current_rot, do_rot)
+        self.transform_stack.append(('R', do_rot))
         return
 
     def translate(self, translation_type, translation):
@@ -435,7 +433,9 @@ class SimObj(dict):
         )
         for key in keys:
             self[key] += translation
-        self.current_translation[translation_type] += translation.reshape((3,))
+        self.transform_stack.append(
+            ('T', translation_type, translation)
+        )
         return
 
     def recenter(self, translation_type, new_centre):
