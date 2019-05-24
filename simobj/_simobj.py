@@ -117,7 +117,7 @@ def do_transform_stack(func):
     def tsfunc_wrapper(self, key):
         self[key] = func(self, key)
         if key in self._coord_type.keys():
-            for pop in self.transform_stack:
+            for pop in self._transform_stack:
                 if pop[0] == 'T' and pop[1] == self._coord_type[key]:
                     self[key] = apply_translate(self[key], pop[2])
                 elif pop[0] == 'R':
@@ -228,7 +228,7 @@ class SimObj(dict):
         self.init_args['simfiles_configfile'] = simfiles_configfile
         self.init_args['verbose'] = verbose
         self.init_args['ncpu'] = ncpu
-        self.transform_stack = list()
+        self._transform_stack = list()
 
         self._read_config()
 
@@ -411,7 +411,23 @@ class SimObj(dict):
         keys = set(self.keys()).intersection(self._coord_type.keys())
         for key in keys:
             self[key] = apply_rotmat(self[key], do_rot)
-        self.transform_stack.append(('R', do_rot))
+        self._transform_stack.append(('R', do_rot))
+        return
+
+    def unrotate(self):
+        """
+        Reverse last coordinate transformation if it was a rotation.
+        """
+        
+        last_transform = self._transform_stack.pop()
+        if last_transform[0] != 'R':
+            self._transform_stack.append(last_transform)
+            raise RuntimeError('Cannot unrotate if last transformation was not'
+                               ' a rotation.')
+        do_rot = last_transform[1].T
+        keys = set(self.keys()).intersection(self._coord_type.keys())
+        for key in keys:
+            self[key] = apply_rotmat(self[key], do_rot)
         return
 
     def translate(self, translation_type, translation):
@@ -433,7 +449,7 @@ class SimObj(dict):
         )
         for key in keys:
             self[key] += translation
-        self.transform_stack.append(
+        self._transform_stack.append(
             ('T', translation_type, translation)
         )
         return
