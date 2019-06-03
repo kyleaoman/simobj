@@ -57,7 +57,9 @@ def usevals(names):
     def usevals_decorator(func):
         def func_wrapper(*args, **kwargs):
             loaded_keys = set()
-            loaded_keys.update(kwargs['vals'].load(names))
+            loaded_keys.update(
+                kwargs['vals'].load(names, verbose=kwargs['verbose'])
+            )
             retval = func(*args, **kwargs)
             for k in loaded_keys:
                 del kwargs['vals'][k]
@@ -69,12 +71,12 @@ def usevals(names):
 def apply_box_wrap(coords, length):
     coords[coords > length / 2.] -= length
     coords[coords < -length / 2.] += length
-    return
+    return coords
 
 
-def apply_recenter(coords, centre):
-    coords -= centre
-    return
+def apply_translate(coords, offset):
+    coords += offset
+    return coords
 
 
 def apply_rotmat(coords, rotmat):
@@ -86,13 +88,13 @@ def do_recenter(func):
     def rcfunc_wrapper(self, key):
         self[key] = func(self, key)
         if key in self._recenter.keys():
-            self._F.load(keys=(self._recenter[key], ))
+            self._F.load(keys=(self._recenter[key], ),
+                         verbose=self.init_args['verbose'])
             centres = self._F[self._recenter[key]]
             centre_mask = self._masks[
                 self._F._extractors[self._recenter[key]].keytype]
-            centre = centres[centre_mask]
-            centre -= self.current_translation[self._coord_type[key]]
-            apply_recenter(self[key], centre)
+            centre = centres[centre_mask].reshape((1, 3))
+            self[key] = apply_translate(self[key], -centre)
             del self._F[self._recenter[key]]
         return self[key]
     return rcfunc_wrapper
@@ -102,21 +104,26 @@ def do_box_wrap(func):
     def wrapfunc_wrapper(self, key):
         self[key] = func(self, key)
         if key in self._box_wrap.keys():
-            self._F.load(keys=(self._box_wrap[key], ))
+            self._F.load(keys=(self._box_wrap[key], ),
+                         verbose=self.init_args['verbose'])
             Lbox = self._F[self._box_wrap[key]]
-            apply_box_wrap(self[key], Lbox)
+            self[key] = apply_box_wrap(self[key], Lbox)
             del self._F[self._box_wrap[key]]
         return self[key]
     return wrapfunc_wrapper
 
 
-def do_rotate(func):
-    def rotfunc_wrapper(self, key):
+def do_transform_stack(func):
+    def tsfunc_wrapper(self, key):
         self[key] = func(self, key)
         if key in self._coord_type.keys():
-            apply_rotmat(self[key], self.current_rot)
+            for pop in self._transform_stack:
+                if pop[0] == 'T' and pop[1] == self._coord_type[key]:
+                    self[key] = apply_translate(self[key], pop[2])
+                elif pop[0] == 'R':
+                    self[key] = apply_rotmat(self[key], pop[1])
         return self[key]
-    return rotfunc_wrapper
+    return tsfunc_wrapper
 
 
 class MaskDict(dict):
@@ -130,7 +137,10 @@ class MaskDict(dict):
             raise KeyError
         value = self[key] = self.SO._maskfuncs[key](
             *self.SO.init_args['mask_args'],
-            **(dict({'vals': self.SO._F}, **self.SO.init_args['mask_kwargs']))
+            **(dict(
+                {'vals': self.SO._F, 'verbose': self.SO.init_args['verbose']},
+                **self.SO.init_args['mask_kwargs']
+            ))
         )
         return value
 
@@ -199,6 +209,7 @@ class SimObj(dict):
             configfile=None,
             simfiles_configfile=None,
             simfiles_instance=None,
+            verbose=False,
             ncpu=2
     ):
         self.init_args = dict()
@@ -215,12 +226,9 @@ class SimObj(dict):
             raise ValueError('Provide either simfiles_configfile or'
                              ' simfiles_instance, not both.')
         self.init_args['simfiles_configfile'] = simfiles_configfile
+        self.init_args['verbose'] = verbose
         self.init_args['ncpu'] = ncpu
-        self.current_rot = np.eye(3)
-        self.current_translation = {
-            'position': np.zeros(3),
-            'velocity': np.zeros(3)
-        }
+        self._transform_stack = list()
 
         self._read_config()
 
@@ -299,8 +307,8 @@ class SimObj(dict):
         return value
 
     @do_box_wrap
+    @do_transform_stack
     @do_recenter
-    @do_rotate
     def _load_key(self, key):
         if key not in self._F.fields():
             raise KeyError("SimObj: SimFiles member unaware of '"+key+"' key.")
@@ -309,13 +317,21 @@ class SimObj(dict):
         if (mask is not None) and (not self._F.share_mode):
             if isinstance(mask, slice):
                 intervals = ((mask.start, mask.stop), )
+            elif isinstance(mask, tuple):
+                boolmask = np.zeros(mask[0].max() + 1)
+                boolmask[mask] = True
+                intervals = mask_to_intervals(
+                    boolmask,
+                    grouping_ratio=1
+                )
             elif not mask.any():
                 intervals = ((0, 0), )
             else:
                 intervals = mask_to_intervals(mask, grouping_ratio=1)
             parts = []
             for interval in intervals:
-                self._F.load((key, ), intervals=(interval, ))
+                self._F.load((key, ), intervals=(interval, ),
+                             verbose=self.init_args['verbose'])
                 if isinstance(mask, slice):
                     parts.append(self._F[key])
                 else:
@@ -325,12 +341,12 @@ class SimObj(dict):
                 parts[0].unit
 
         elif self._F.share_mode:
-            self._F.load((key, ))
+            self._F.load((key, ), verbose=self.init_args['verbose'])
             self[key] = self._F[key][mask]
             # del disabled for share_mode
 
         else:
-            self._F.load((key, ))
+            self._F.load((key, ), verbose=self.init_args['verbose'])
             self[key] = self._F[key]
             del self._F[key]
 
@@ -395,7 +411,23 @@ class SimObj(dict):
         keys = set(self.keys()).intersection(self._coord_type.keys())
         for key in keys:
             self[key] = apply_rotmat(self[key], do_rot)
-        self.current_rot = apply_rotmat(self.current_rot, do_rot)
+        self._transform_stack.append(('R', do_rot))
+        return
+
+    def unrotate(self):
+        """
+        Reverse last coordinate transformation if it was a rotation.
+        """
+        
+        last_transform = self._transform_stack.pop()
+        if last_transform[0] != 'R':
+            self._transform_stack.append(last_transform)
+            raise RuntimeError('Cannot unrotate if last transformation was not'
+                               ' a rotation.')
+        do_rot = last_transform[1].T
+        keys = set(self.keys()).intersection(self._coord_type.keys())
+        for key in keys:
+            self[key] = apply_rotmat(self[key], do_rot)
         return
 
     def translate(self, translation_type, translation):
@@ -417,7 +449,9 @@ class SimObj(dict):
         )
         for key in keys:
             self[key] += translation
-        self.current_translation[translation_type] += translation
+        self._transform_stack.append(
+            ('T', translation_type, translation)
+        )
         return
 
     def recenter(self, translation_type, new_centre):
