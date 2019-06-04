@@ -1,5 +1,5 @@
 import numpy as np
-from simobj import usevals, apply_translate, apply_box_wrap
+from simobj import usevals
 
 T = ['g', 'dm', 'b2', 'b3', 's', 'bh']
 
@@ -48,6 +48,7 @@ def particle_mask_fofsub(ptype):
 def particle_mask_aperture(ptype):
     @usevals(('xyz_'+ptype, 'cops', 'Lbox'))
     def mask(obj_id, vals=None, aperture=None, **kwargs):
+        from simobj import apply_translate, apply_box_wrap
         key = 'xyz_'+ptype
         gmask = group_mask(obj_id, vals=vals, **kwargs)
         apply_translate(vals[key], -vals['cops'][gmask])
