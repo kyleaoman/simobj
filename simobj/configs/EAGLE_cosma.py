@@ -1,5 +1,5 @@
 import numpy as np
-from simobj import usevals
+1;5202;0cfrom simobj import usevals
 
 # define suffix mnemonics for EAGLE particle types
 T = ['g', 'dm', 's', 'bh']

@@ -28,7 +28,7 @@ extractor_edits = [
 
 def particle_mask_fof(ptype):
     if ptype in ['b2', 'b3']:
-        return lambda obj_id, vals=None: None
+        return lambda obj_id, vals=None, **kwargs: None
 
     @usevals(('ng_'+ptype, ))
     def mask(obj_id, vals=None, **kwargs):
@@ -39,7 +39,7 @@ def particle_mask_fof(ptype):
 
 def particle_mask_fofsub(ptype):
     if ptype in ['b2', 'b3']:
-        return lambda obj_id, vals=None: None
+        return lambda obj_id, vals=None, **kwargs: None
 
     @usevals(('ng_'+ptype, 'nsg_'+ptype))
     def mask(obj_id, vals=None, **kwargs):

@@ -19,7 +19,7 @@ box_wrap = {'xyz_' + t: 'Lbox' for t in T}
 
 def particle_mask_fof(ptype):
     if ptype in ['b2', 'b3']:
-        return lambda obj_id, vals=None: None
+        return lambda obj_id, vals=None, **kwargs: None
 
     @usevals(('l_'+ptype, ))
     def mask(obj_id, vals=None, **kwargs):
@@ -33,7 +33,7 @@ def particle_mask_fof(ptype):
 
 def particle_mask_fofsub(ptype):
     if ptype in ['b2', 'b3']:
-        return lambda obj_id, vals=None: None
+        return lambda obj_id, vals=None, **kwargs: None
 
     @usevals(('l_'+ptype, 'sl_'+ptype))
     def mask(obj_id, vals=None, **kwargs):
