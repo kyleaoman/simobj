@@ -1,5 +1,8 @@
 import numpy as np
-1;5202;0cfrom simobj import usevals
+from simobj import usevals
+from pyread_eagle import EagleSnapshot
+from astropy import units as U
+from os.path import join
 
 # define suffix mnemonics for EAGLE particle types
 T = ['g', 'dm', 's', 'bh']
@@ -24,7 +27,7 @@ box_wrap = {'xyz_' + t: 'Lbox' for t in T}
 extractor_edits = [
     (
         lambda E, A:
-        ('particle' in E.keytype) and (A['mask_type'] == 'aperture'),
+        ('particle' in E.keytype) and (A['mask_type'] in ('aperture', 'pyread_eagle')),
         'filetype',
         'snapshot'
     )
@@ -71,6 +74,27 @@ def particle_mask_aperture(ptype):
     return mask
 
 
+def particle_mask_pyread_eagle(ptype):
+    @usevals(('cops', ))
+    def mask(obj_id, vals=None, box_size=None, snapfile=None, **kwargs):
+        gmask = group_mask(obj_id, vals=vals, **kwargs)
+        cop = vals['cops'][gmask][0].to(U.Mpc).value * vals['h'].value / vals['a']
+        box_size = box_size.to(U.Mpc).value * vals['h'].value / vals['a']
+        region = cop[0] - box_size, cop[0] + box_size, \
+            cop[1] - box_size, cop[1] + box_size, \
+            cop[2] - box_size, cop[2] + box_size
+        ES = EagleSnapshot(join(*snapfile) + '.0.hdf5')
+        ES.select_region(*region)
+        itype = {'g': 0, 'dm': 1, 's': 4, 'bh': 5}[ptype]
+        n_in_file = ES.num_part_in_file[itype]
+        filestarts = np.cumsum(np.r_[0, n_in_file[:-1]])
+        fnum, foff = ES.get_particle_locations(itype)
+        retval = np.zeros(np.sum(n_in_file), dtype=np.bool)
+        retval[filestarts[fnum] + foff] = True
+        return retval
+    return mask
+
+
 @usevals(('gns', 'sgns'))
 def group_mask(obj_id, vals=None, **kwargs):
     return np.logical_and(vals.gns == obj_id.fof, vals.sgns == obj_id.sub)
@@ -105,5 +129,6 @@ for ptype in T:
     masks['particle_'+ptype] = {
         'fofsub': particle_mask_fofsub(ptype),
         'fof': particle_mask_fof(ptype),
-        'aperture': particle_mask_aperture(ptype)
+        'aperture': particle_mask_aperture(ptype),
+        'pyread_eagle': particle_mask_pyread_eagle(ptype)
     }
