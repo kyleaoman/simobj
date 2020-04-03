@@ -210,7 +210,8 @@ class SimObj(dict):
             simfiles_configfile=None,
             simfiles_instance=None,
             verbose=False,
-            ncpu=2
+            ncpu=2,
+            grouping_ratio=1
     ):
         self.init_args = dict()
         self.init_args['obj_id'] = obj_id
@@ -228,6 +229,7 @@ class SimObj(dict):
         self.init_args['simfiles_configfile'] = simfiles_configfile
         self.init_args['verbose'] = verbose
         self.init_args['ncpu'] = ncpu
+        self.init_args['grouping_ratio'] = grouping_ratio
         self._transform_stack = list()
 
         self._read_config()
@@ -322,12 +324,13 @@ class SimObj(dict):
                 boolmask[mask] = True
                 intervals = mask_to_intervals(
                     boolmask,
-                    grouping_ratio=1
+                    grouping_ratio=self.init_args['grouping_ratio']
                 )
             elif not mask.any():
                 intervals = ((0, 0), )
             else:
-                intervals = mask_to_intervals(mask, grouping_ratio=1)
+                intervals = mask_to_intervals(
+                    mask, grouping_ratio=self.init_args['grouping_ratio'])
             parts = []
             for interval in intervals:
                 self._F.load((key, ), intervals=(interval, ),
