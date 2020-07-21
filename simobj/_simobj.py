@@ -336,8 +336,11 @@ class SimObj(dict):
                     parts.append(self._F[key][mask[interval[0]: interval[1]]])
                 for k in loaded_keys:
                     del self._F[k]
-            self[key] = np.concatenate([part.value for part in parts]) * \
-                parts[0].unit
+            try:
+                self[key] = np.concatenate([part.value for part in parts]) * \
+                    parts[0].unit
+            except AttributeError:
+                self[key] = np.concatenate(parts)
 
         elif self._F.share_mode:
             self._F.load((key, ), verbose=self.init_args['verbose'])
