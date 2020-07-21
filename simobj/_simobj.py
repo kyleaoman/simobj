@@ -333,13 +333,14 @@ class SimObj(dict):
                     mask, grouping_ratio=self.init_args['grouping_ratio'])
             parts = []
             for interval in intervals:
-                self._F.load((key, ), intervals=(interval, ),
-                             verbose=self.init_args['verbose'])
+                loaded_keys = self._F.load((key, ), intervals=(interval, ),
+                                           verbose=self.init_args['verbose'])
                 if isinstance(mask, slice):
                     parts.append(self._F[key])
                 else:
                     parts.append(self._F[key][mask[interval[0]: interval[1]]])
-                del self._F[key]
+                for k in loaded_keys:
+                    del self._F[k]
             self[key] = np.concatenate([part.value for part in parts]) * \
                 parts[0].unit
 
@@ -421,7 +422,7 @@ class SimObj(dict):
         """
         Reverse last coordinate transformation if it was a rotation.
         """
-        
+
         last_transform = self._transform_stack.pop()
         if last_transform[0] != 'R':
             self._transform_stack.append(last_transform)

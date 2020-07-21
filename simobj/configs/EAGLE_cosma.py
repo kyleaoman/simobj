@@ -27,7 +27,8 @@ box_wrap = {'xyz_' + t: 'Lbox' for t in T}
 extractor_edits = [
     (
         lambda E, A:
-        ('particle' in E.keytype) and (A['mask_type'] in ('aperture', 'pyread_eagle')),
+        ('particle' in E.keytype)
+        and (A['mask_type'] in ('aperture', 'pyread_eagle')),
         'filetype',
         'snapshot'
     )
@@ -53,7 +54,7 @@ def particle_mask_fofsub(ptype):
 
 
 def particle_mask_aperture(ptype):
-    @usevals(('xyz_'+ptype, ))
+    @usevals(('xyz_'+ptype, 'cops', 'Lbox'))
     def mask(obj_id, vals=None, aperture=None, **kwargs):
         from simobj import apply_translate, apply_box_wrap
         key = 'xyz_'+ptype
@@ -78,7 +79,8 @@ def particle_mask_pyread_eagle(ptype):
     @usevals(('cops', ))
     def mask(obj_id, vals=None, box_size=None, snapfile=None, **kwargs):
         gmask = group_mask(obj_id, vals=vals, **kwargs)
-        cop = vals['cops'][gmask][0].to(U.Mpc).value * vals['h'].value / vals['a']
+        cop = vals['cops'][gmask][0].to(U.Mpc).value * vals['h'].value \
+            / vals['a']
         box_size = box_size.to(U.Mpc).value * vals['h'].value / vals['a']
         region = cop[0] - box_size, cop[0] + box_size, \
             cop[1] - box_size, cop[1] + box_size, \
