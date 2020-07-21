@@ -58,8 +58,7 @@ def particle_mask_pyread_eagle(ptype):
 
     def mask(obj_id, vals=None, box_size=None, snapfile=None, SO=None,
              **kwargs):
-        cop = SO.cops[0].to(U.Mpc).value * SO.a.value \
-            / SO.a
+        cop = SO.cops[0].to(U.Mpc).value * SO.h.value / SO.a.value
         box_size = box_size.to(U.Mpc).value * SO.h.value / SO.a.value
         region = cop[0] - box_size, cop[0] + box_size, \
             cop[1] - box_size, cop[1] + box_size, \
