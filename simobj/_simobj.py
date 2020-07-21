@@ -138,7 +138,11 @@ class MaskDict(dict):
         value = self[key] = self.SO._maskfuncs[key](
             *self.SO.init_args['mask_args'],
             **(dict(
-                {'vals': self.SO._F, 'verbose': self.SO.init_args['verbose']},
+                {
+                    'vals': self.SO._F,
+                    'verbose': self.SO.init_args['verbose'],
+                    'masks': self
+                },
                 **self.SO.init_args['mask_kwargs']
             ))
         )
