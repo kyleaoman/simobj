@@ -88,14 +88,8 @@ def do_recenter(func):
     def rcfunc_wrapper(self, key):
         self[key] = func(self, key)
         if key in self._recenter.keys():
-            self._F.load(keys=(self._recenter[key], ),
-                         verbose=self.init_args['verbose'])
-            centres = self._F[self._recenter[key]]
-            centre_mask = self._masks[
-                self._F._extractors[self._recenter[key]].keytype]
-            centre = centres[centre_mask].reshape((1, 3))
+            centre = self[self._recenter[key]]
             self[key] = apply_translate(self[key], -centre)
-            del self._F[self._recenter[key]]
         return self[key]
     return rcfunc_wrapper
 
@@ -104,11 +98,8 @@ def do_box_wrap(func):
     def wrapfunc_wrapper(self, key):
         self[key] = func(self, key)
         if key in self._box_wrap.keys():
-            self._F.load(keys=(self._box_wrap[key], ),
-                         verbose=self.init_args['verbose'])
-            Lbox = self._F[self._box_wrap[key]]
+            Lbox = self[self._box_wrap[key]]
             self[key] = apply_box_wrap(self[key], Lbox)
-            del self._F[self._box_wrap[key]]
         return self[key]
     return wrapfunc_wrapper
 
@@ -141,7 +132,7 @@ class MaskDict(dict):
                 {
                     'vals': self.SO._F,
                     'verbose': self.SO.init_args['verbose'],
-                    'masks': self
+                    'SO': self.SO
                 },
                 **self.SO.init_args['mask_kwargs']
             ))
@@ -354,9 +345,13 @@ class SimObj(dict):
             # del disabled for share_mode
 
         else:
-            self._F.load((key, ), verbose=self.init_args['verbose'])
+            loaded_keys = self._F.load(
+                (key, ),
+                verbose=self.init_args['verbose']
+            )
             self[key] = self._F[key]
-            del self._F[key]
+            for k in loaded_keys:
+                del self._F[k]
 
         return self[key]
 

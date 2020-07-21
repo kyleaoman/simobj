@@ -54,13 +54,13 @@ def particle_mask_fofsub(ptype):
 
 
 def particle_mask_aperture(ptype):
-    @usevals(('xyz_'+ptype, 'cops', 'Lbox'))
-    def mask(obj_id, vals=None, aperture=None, masks=None, **kwargs):
+    @usevals(('xyz_'+ptype, ))
+    def mask(obj_id, vals=None, aperture=None, SO=None, **kwargs):
         from simobj import apply_translate, apply_box_wrap
         key = 'xyz_'+ptype
-        gmask = masks['group']
-        apply_translate(vals[key], -vals['cops'][gmask])
-        apply_box_wrap(vals[key], vals['Lbox'])
+        # gmask = masks['group']
+        apply_translate(vals[key], -SO.cops[0])
+        apply_box_wrap(vals[key], SO.Lbox)
         retval = np.zeros(vals[key].shape[0], dtype=np.bool)
         outer_cube = (np.abs(vals[key]) < aperture).all(axis=1)
         inner_cube = np.zeros(vals[key].shape[0], dtype=np.bool)
@@ -76,13 +76,11 @@ def particle_mask_aperture(ptype):
 
 
 def particle_mask_pyread_eagle(ptype):
-    @usevals(('cops', ))
-    def mask(obj_id, vals=None, box_size=None, snapfile=None, masks=None,
+    def mask(obj_id, vals=None, box_size=None, snapfile=None, SO=None,
              **kwargs):
-        gmask = masks['group']
-        cop = vals['cops'][gmask][0].to(U.Mpc).value * vals['h'].value \
-            / vals['a']
-        box_size = box_size.to(U.Mpc).value * vals['h'].value / vals['a']
+        cop = SO.cops[0].to(U.Mpc).value * SO.a.value \
+            / SO.a
+        box_size = box_size.to(U.Mpc).value * SO.h.value / SO.a.value
         region = cop[0] - box_size, cop[0] + box_size, \
             cop[1] - box_size, cop[1] + box_size, \
             cop[2] - box_size, cop[2] + box_size
@@ -100,7 +98,10 @@ def particle_mask_pyread_eagle(ptype):
 
 @usevals(('gns', 'sgns'))
 def group_mask(obj_id, vals=None, **kwargs):
-    return np.logical_and(vals.gns == obj_id.fof, vals.sgns == obj_id.sub)
+    return np.logical_and(
+        vals['gns'] == obj_id.fof,
+        vals['sgns'] == obj_id.sub
+    )
 
 
 @usevals(('nfof', ))
@@ -109,10 +110,10 @@ def fof_mask(obj_id, vals=None, **kwargs):
 
 
 @usevals(('offID', 'nID'))
-def id_mask(obj_id, vals=None, masks=None, **kwargs):
-    gmask = masks['group']
-    start = vals.offID[gmask][0]
-    end = start + vals.nID[gmask][0]
+def id_mask(obj_id, vals=None, SO=None, **kwargs):
+    start = SO.offID
+    end = start + SO.nID
+    print(start, end)
     return np.s_[start:end]
 
 
