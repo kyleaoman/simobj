@@ -36,9 +36,9 @@ def particle_mask_fofsub(ptype):
         return lambda obj_id, vals=None, **kwargs: None
 
     @usevals(('l_'+ptype, 'sl_'+ptype))
-    def mask(obj_id, vals=None, **kwargs):
+    def mask(obj_id, vals=None, masks=None, **kwargs):
         fmask = fof_mask(obj_id, vals=vals, **kwargs)
-        gmask = group_mask(obj_id, vals=vals, **kwargs)
+        gmask = masks['group']
         fof_offs = np.cumsum(vals['l_'+ptype], dtype=np.int).value
         fof_offs = np.r_[0, fof_offs[:-1]]
         fof_off = fof_offs[fmask][0]
@@ -55,10 +55,10 @@ def particle_mask_fofsub(ptype):
 def particle_mask_aperture(ptype):
 
     @usevals(('xyz_'+ptype, 'cops', 'Lbox'))
-    def mask(obj_id, vals=None, aperture=None, **kwargs):
-        apply_translate, apply_box_wrap
+    def mask(obj_id, vals=None, aperture=None, masks=None, **kwargs):
+        from simobj import apply_translate, apply_box_wrap
         key = 'xyz_'+ptype
-        gmask = group_mask(obj_id, vals=vals, **kwargs)
+        gmask = masks['group']
         apply_translate(vals[key], -vals['cops'][gmask])
         apply_box_wrap(vals[key], vals['Lbox'])
         retval = np.zeros(vals[key].shape[0], dtype=np.bool)
