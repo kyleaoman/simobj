@@ -6,6 +6,14 @@ from simfiles import SimFiles
 from ._L_align import L_align
 
 
+def dealias(func):
+    def dealias_wrapper(self, key, *args, **kwargs):
+        if not key.startswith('_') and hasattr(self._F, '_aliases'):
+            key = self._F._aliases.get(key, key)
+        return func(self, key, *args, **kwargs)
+    return dealias_wrapper
+
+
 def mask_to_intervals(mask, grouping_ratio=0):
     """
     Convert a boolean mask to a set of 2-tuples defining index intervals.
@@ -208,6 +216,21 @@ class SimObj(dict):
             ncpu=2,
             grouping_ratio=1
     ):
+        if (simfiles_configfile is not None) \
+           and (simfiles_instance is not None):
+            raise ValueError('Provide either simfiles_configfile or'
+                             ' simfiles_instance, not both.')
+        if simfiles_configfile is not None:
+            self._F = SimFiles(
+                snap_id,
+                configfile=simfiles_configfile,
+                ncpu=ncpu
+            )
+        elif simfiles_instance is not None:
+            self._F = simfiles_instance
+        else:
+            raise ValueError('One of simfiles_configfile or simfiles_instance'
+                             ' is required.')
         self.init_args = dict()
         self.init_args['obj_id'] = obj_id
         self.init_args['snap_id'] = snap_id
@@ -217,10 +240,6 @@ class SimObj(dict):
         self.init_args['mask_kwargs'] = \
             dict() if mask_kwargs is None else mask_kwargs
         self.init_args['configfile'] = configfile
-        if (simfiles_configfile is not None) \
-           and (simfiles_instance is not None):
-            raise ValueError('Provide either simfiles_configfile or'
-                             ' simfiles_instance, not both.')
         self.init_args['simfiles_configfile'] = simfiles_configfile
         self.init_args['verbose'] = verbose
         self.init_args['ncpu'] = ncpu
@@ -228,19 +247,8 @@ class SimObj(dict):
         self._transform_stack = list()
 
         self._read_config()
-
-        if simfiles_configfile is not None:
-            self._F = SimFiles(
-                self.init_args['snap_id'],
-                configfile=self.init_args['simfiles_configfile'],
-                ncpu=self.init_args['ncpu']
-            )
-        elif simfiles_instance is not None:
-            self._F = simfiles_instance
-        else:
-            raise ValueError('One of simfiles_configfile or simfiles_instance'
-                             ' is required.')
         self._edit_extractors()
+
         self._masks = MaskDict(self)
 
         return
@@ -258,17 +266,20 @@ class SimObj(dict):
                     self.init_args['configfile']))
 
         try:
-            self._recenter = config.recenter
+            self._recenter = {self._F._aliases.get(k, k): v
+                              for k, v in config.recenter.items()}
         except AttributeError:
             self._recenter = dict()
 
         try:
-            self._coord_type = config.coord_type
+            self._coord_type = {self._F._aliases.get(k, k): v
+                                for k, v in config.coord_type.items()}
         except AttributeError:
             self._coord_type = dict()
 
         try:
-            self._box_wrap = config.box_wrap
+            self._box_wrap = {self._F._aliases.get(k, k): v
+                              for k, v in config.box_wrap.items()}
         except AttributeError:
             self._box_wrap = dict()
 
@@ -287,9 +298,11 @@ class SimObj(dict):
                 if isinstance(maskfunc, dict) \
                 else maskfunc
 
+    @dealias
     def __setattr__(self, key, value):
         return self.__setitem__(key, value)
 
+    @dealias
     def __getattr__(self, key):
         if '__' in key:
             # avoid requesting reserved keys from SimFiles
@@ -299,15 +312,17 @@ class SimObj(dict):
         except KeyError:
             return self[key]
 
+    @dealias
     def __missing__(self, key):
         value = self[key] = self._load_key(key)
         return value
 
+    @dealias
     @do_box_wrap
     @do_transform_stack
     @do_recenter
     def _load_key(self, key):
-        if key not in self._F.fields():
+        if key not in set(self._F.fields(aliases=False)):
             raise KeyError("SimObj: SimFiles member unaware of '"+key+"' key.")
 
         mask = self._masks[self._F._extractors[key].keytype]

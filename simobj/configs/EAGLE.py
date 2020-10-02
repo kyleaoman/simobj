@@ -4,43 +4,43 @@ from simobj.configs._EAGLE_toolkit import header_mask, group_mask, fof_mask, \
 
 
 # define suffix mnemonics for EAGLE particle types
-T = ['g', 'dm', 's', 'bh']
+T = dict(g=0, dm=1, s=4, bh=5)
 
 # keys for recentering
 recenter = {
     '{:s}_{:s}'.format(pos_vel[0], t): pos_vel[1] for pos_vel in
-    [('xyz', 'cops'), ('vxyz', 'vcents')] for t in T
+    [('xyz', 'cops'), ('vxyz', 'vcents')] for t in T.keys()
 }
 
 # keys for coordinate differentiation
 coord_type = {
     '{:s}_{:s}'.format(pos_vel[0], t): pos_vel[1] for pos_vel in
-    [('xyz', 'position'), ('vxyz', 'velocity')] for t in T
+    [('xyz', 'position'), ('vxyz', 'velocity')] for t in T.keys()
 }
 
 # keys for box wrapping
-box_wrap = {'xyz_' + t: 'Lbox' for t in T}
+box_wrap = {'xyz_' + t: 'Lbox' for t in T.keys()}
 
 # adjustments for aperture masking
 extractor_edits = [
     (
         lambda E, A:
         ('particle' in E.keytype)
-        and (A['mask_type'] in ('aperture', 'pyread_eagle')),
+        and (A['mask_type'] not in ('aperture', 'pyread_eagle')),
         'filetype',
-        'snapshot'
+        'particle'
     )
 ]
 
 # define masks
 masks = dict()
 
-masks['header'] = header_mask
+masks['meta'] = header_mask
 masks['group'] = group_mask
 masks['fofgroup'] = fof_mask
 masks['idgroup'] = id_mask
-for ptype in T:
-    masks['particle_'+ptype] = {
+for ptype, pnum in T.items():
+    masks['particle{:d}'.format(pnum)] = {
         'fofsub': particle_mask_fofsub(ptype),
         'fof': particle_mask_fof(ptype),
         'aperture': particle_mask_aperture(ptype),
