@@ -133,6 +133,7 @@ class MaskDict(dict):
 
     def __missing__(self, key):
         if key not in self.SO._maskfuncs.keys():
+            print(key)
             raise KeyError
         value = self[key] = self.SO._maskfuncs[key](
             *self.SO.init_args['mask_args'],
@@ -474,6 +475,10 @@ class SimObj(dict):
             ('T', translation_type, translation)
         )
         return
+
+    def transform(self, transform_stack):
+        for tf in transform_stack:
+            {'T': self.translate, 'R': self.rotate}[tf[0]](*tf[1:])
 
     def recenter(self, translation_type, new_centre):
         """
