@@ -407,6 +407,11 @@ class SimObj(dict):
             Empirically, this often results in a good alignment to the galactic
             disc. If finer control is needed, derive the desired rotation
             separately and provide a rotmat instead.
+        
+        Returns
+        -------
+        do_rot : np.ndarray
+            The rotation matrix used.
         """
 
         do_rot = np.eye(3)
@@ -434,11 +439,16 @@ class SimObj(dict):
         for key in keys:
             self[key] = apply_rotmat(self[key], do_rot)
         self._transform_stack.append(('R', do_rot))
-        return
+        return do_rot
 
     def unrotate(self):
         """
         Reverse last coordinate transformation if it was a rotation.
+
+        Returns
+        -------
+        do_rot : np.ndarray
+            The rotation matrix used.
         """
 
         last_transform = self._transform_stack.pop()
@@ -450,7 +460,7 @@ class SimObj(dict):
         keys = set(self.keys()).intersection(self._coord_type.keys())
         for key in keys:
             self[key] = apply_rotmat(self[key], do_rot)
-        return
+        return do_rot
 
     def translate(self, translation_type, translation):
         """
