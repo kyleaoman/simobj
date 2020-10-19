@@ -67,7 +67,10 @@ def particle_mask_pyread_eagle(ptype):
         ES.select_region(*region)
         itype = {'g': 0, 'dm': 1, 's': 4, 'bh': 5}[ptype]
         n_in_file = ES.num_part_in_file[itype]
-        filestarts = np.cumsum(np.r_[0, n_in_file[:-1]])
+        filestarts = np.asarray(
+            np.cumsum(np.r_[0, n_in_file[:-1]]),
+            dtype=np.int
+        )
         fnum, foff = ES.get_particle_locations(itype)
         retval = np.zeros(np.sum(n_in_file), dtype=np.bool)
         retval[filestarts[fnum] + foff] = True
