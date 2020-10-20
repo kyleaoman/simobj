@@ -56,10 +56,11 @@ def particle_mask_aperture(ptype):
 
 def particle_mask_pyread_eagle(ptype):
 
-    def mask(obj_id, vals=None, box_size=None, snapfile=None, SO=None,
-             **kwargs):
-        cop = SO.cops[0].to(U.Mpc).value * SO.h.value / SO.a.value
-        box_size = box_size.to(U.Mpc).value * SO.h.value / SO.a.value
+    def mask(obj_id, vals=None, box_size=None, SO=None, **kwargs):
+        snapfile = SO._F._snapshot['snapshot']
+        Lunit = (SO.Units_attr_UnitLength_in_cm * U.cm).to(U.Mpc).value
+        cop = SO.cops[0].to(U.Mpc).value * SO.h.value / SO.a.value / Lunit
+        box_size = box_size.to(U.Mpc).value * SO.h.value / SO.a.value / Lunit
         region = cop[0] - box_size, cop[0] + box_size, \
             cop[1] - box_size, cop[1] + box_size, \
             cop[2] - box_size, cop[2] + box_size

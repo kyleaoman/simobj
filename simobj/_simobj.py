@@ -407,7 +407,7 @@ class SimObj(dict):
             Empirically, this often results in a good alignment to the galactic
             disc. If finer control is needed, derive the desired rotation
             separately and provide a rotmat instead.
-        
+
         Returns
         -------
         do_rot : np.ndarray
