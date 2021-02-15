@@ -25,9 +25,10 @@ box_wrap = {'xyz_' + t: 'Lbox' for t in T.keys()}
 extractor_edits = [
     (
         lambda E, A:
-        (E.filetype == 'particle'),
+        ('particle' in E.keytype)
+        and (A['mask_type'] not in ('aperture', 'pyread_eagle')),
         'filetype',
-        'snapshot'
+        'particle'
     )
 ]
 
