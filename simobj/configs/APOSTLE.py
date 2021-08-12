@@ -1,5 +1,6 @@
 from simobj.configs._EAGLE_toolkit import header_mask, group_mask, fof_mask, \
-    id_mask, particle_mask_fofsub, particle_mask_fof, particle_mask_aperture
+    id_mask, particle_mask_fofsub, particle_mask_fof, particle_mask_aperture, \
+    particle_mask_fof_snip
 
 # define suffix mnemonics for EAGLE particle types
 T = dict(g=0, dm=1, b2=2, b3=3, s=4, bh=5)
@@ -25,9 +26,15 @@ extractor_edits = [
     ),
     (
         lambda E, A:
-        ('particle' in E.keytype) and(A['mask_type'] != 'aperture'),
+        ('particle' in E.keytype) and (A['mask_type'] != 'aperture'),
         'filetype',
         'particle'
+    ),
+    (
+        lambda E, A:
+        ('particle' in E.keytype) and (A['mask_type'] == 'fofsnip'),
+        'filetype',
+        'snapshot'
     )
 ]
 
@@ -41,5 +48,6 @@ for ptype, pnum in T.items():
     masks['particle{:d}'.format(pnum)] = {
         'fofsub': particle_mask_fofsub(ptype),
         'fof': particle_mask_fof(ptype),
+        'fofsnip': particle_mask_fof_snip(ptype),
         'aperture': particle_mask_aperture(ptype)
     }
