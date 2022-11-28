@@ -49,6 +49,8 @@ def particle_mask_aperture(ptype):
         retval[inner_cube] = np.ones(np.sum(inner_cube))
         retval[need_D] = np.sum(np.power(vals[key][need_D], 2), axis=1) < \
             np.power(aperture, 2)
+        apply_translate(vals[key], SO.cops[0])
+        apply_box_wrap(vals[key], SO.Lbox)
         return retval
 
     return mask

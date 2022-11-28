@@ -25,7 +25,7 @@ extractor_edits = [
     ),
     (
         lambda E, A:
-        ('particle' in E.keytype) and(A['mask_type'] != 'aperture'),
+        ('particle' in E.keytype) and (A['mask_type'] != 'aperture'),
         'filetype',
         'particle'
     )
