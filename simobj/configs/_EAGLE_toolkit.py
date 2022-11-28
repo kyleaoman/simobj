@@ -17,6 +17,17 @@ def particle_mask_fof(ptype):
     return mask
 
 
+def particle_mask_fof_snip(ptype):
+    if ptype in ('b2', 'b3'):
+        return lambda obj_id, vals=None, **kwargs: None
+
+    @usevals(('ng_'+ptype, ))
+    def mask(obj_id, vals=None, **kwargs):
+        return np.abs(vals['ng_'+ptype]) == obj_id.fof
+
+    return mask
+
+
 def particle_mask_fofsub(ptype):
     if ptype in ('b2', 'b3'):
         return lambda obj_id, vals=None, **kwargs: None

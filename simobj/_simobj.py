@@ -215,7 +215,8 @@ class SimObj(dict):
             simfiles_instance=None,
             verbose=False,
             ncpu=2,
-            grouping_ratio=1
+            grouping_ratio=1,
+            autorecenter_off=False
     ):
         if (simfiles_configfile is not None) \
            and (simfiles_instance is not None):
@@ -245,6 +246,7 @@ class SimObj(dict):
         self.init_args['verbose'] = verbose
         self.init_args['ncpu'] = ncpu
         self.init_args['grouping_ratio'] = grouping_ratio
+        self.init_args['autorecenter_off'] = autorecenter_off
         self._transform_stack = list()
 
         self._read_config()
@@ -266,11 +268,14 @@ class SimObj(dict):
                 "SimObj: configfile '{:s}' not found.".format(
                     self.init_args['configfile']))
 
-        try:
-            self._recenter = {self._F._aliases.get(k, k): v
-                              for k, v in config.recenter.items()}
-        except AttributeError:
+        if self.init_args['autorecenter_off']:
             self._recenter = dict()
+        else:
+            try:
+                self._recenter = {self._F._aliases.get(k, k): v
+                                  for k, v in config.recenter.items()}
+            except AttributeError:
+                self._recenter = dict()
 
         try:
             self._coord_type = {self._F._aliases.get(k, k): v
