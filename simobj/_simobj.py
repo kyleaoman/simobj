@@ -8,9 +8,10 @@ from ._L_align import L_align
 
 def dealias(func):
     def dealias_wrapper(self, key, *args, **kwargs):
-        if not key.startswith('_') and hasattr(self._F, '_aliases'):
+        if not key.startswith("_") and hasattr(self._F, "_aliases"):
             key = self._F._aliases.get(key, key)
         return func(self, key, *args, **kwargs)
+
     return dealias_wrapper
 
 
@@ -65,25 +66,25 @@ def usevals(names):
     def usevals_decorator(func):
         def func_wrapper(*args, **kwargs):
             loaded_keys = set()
-            loaded_keys.update(
-                kwargs['vals'].load(names, verbose=kwargs['verbose'])
-            )
+            loaded_keys.update(kwargs["vals"].load(names, verbose=kwargs["verbose"]))
             retval = func(*args, **kwargs)
             for k in loaded_keys:
-                del kwargs['vals'][k]
+                del kwargs["vals"][k]
             return retval
+
         return func_wrapper
+
     return usevals_decorator
 
 
 def apply_box_wrap(coords, length):
-    coords[coords > length / 2.] -= length
-    coords[coords < -length / 2.] += length
+    coords[coords > length / 2.0] -= length
+    coords[coords < -length / 2.0] += length
     return coords
 
 
 def apply_translate(coords, offset):
-    coords += offset
+    coords += offset.squeeze()[np.newaxis, :]
     return coords
 
 
@@ -99,6 +100,7 @@ def do_recenter(func):
             centre = self[self._recenter[key]]
             self[key] = apply_translate(self[key], -centre)
         return self[key]
+
     return rcfunc_wrapper
 
 
@@ -109,6 +111,7 @@ def do_box_wrap(func):
             Lbox = self[self._box_wrap[key]]
             self[key] = apply_box_wrap(self[key], Lbox)
         return self[key]
+
     return wrapfunc_wrapper
 
 
@@ -117,11 +120,12 @@ def do_transform_stack(func):
         self[key] = func(self, key)
         if key in self._coord_type.keys():
             for pop in self._transform_stack:
-                if pop[0] == 'T' and pop[1] == self._coord_type[key]:
+                if pop[0] == "T" and pop[1] == self._coord_type[key]:
                     self[key] = apply_translate(self[key], pop[2])
-                elif pop[0] == 'R':
+                elif pop[0] == "R":
                     self[key] = apply_rotmat(self[key], pop[1])
         return self[key]
+
     return tsfunc_wrapper
 
 
@@ -136,15 +140,17 @@ class MaskDict(dict):
             print(key)
             raise KeyError
         value = self[key] = self.SO._maskfuncs[key](
-            *self.SO.init_args['mask_args'],
-            **(dict(
-                {
-                    'vals': self.SO._F,
-                    'verbose': self.SO.init_args['verbose'],
-                    'SO': self.SO
-                },
-                **self.SO.init_args['mask_kwargs']
-            ))
+            *self.SO.init_args["mask_args"],
+            **(
+                dict(
+                    {
+                        "vals": self.SO._F,
+                        "verbose": self.SO.init_args["verbose"],
+                        "SO": self.SO,
+                    },
+                    **self.SO.init_args["mask_kwargs"]
+                )
+            )
         )
         return value
 
@@ -204,49 +210,44 @@ class SimObj(dict):
         return
 
     def __init__(
-            self,
-            obj_id=None,
-            snap_id=None,
-            mask_type=None,
-            mask_args=None,
-            mask_kwargs=None,
-            configfile=None,
-            simfiles_configfile=None,
-            simfiles_instance=None,
-            verbose=False,
-            ncpu=2,
-            grouping_ratio=1,
-            autorecenter_off=False
+        self,
+        obj_id=None,
+        snap_id=None,
+        mask_type=None,
+        mask_args=None,
+        mask_kwargs=None,
+        configfile=None,
+        simfiles_configfile=None,
+        simfiles_instance=None,
+        verbose=False,
+        ncpu=2,
+        grouping_ratio=1,
+        autorecenter_off=False,
     ):
-        if (simfiles_configfile is not None) \
-           and (simfiles_instance is not None):
-            raise ValueError('Provide either simfiles_configfile or'
-                             ' simfiles_instance, not both.')
-        if simfiles_configfile is not None:
-            self._F = SimFiles(
-                snap_id,
-                configfile=simfiles_configfile,
-                ncpu=ncpu
+        if (simfiles_configfile is not None) and (simfiles_instance is not None):
+            raise ValueError(
+                "Provide either simfiles_configfile or" " simfiles_instance, not both."
             )
+        if simfiles_configfile is not None:
+            self._F = SimFiles(snap_id, configfile=simfiles_configfile, ncpu=ncpu)
         elif simfiles_instance is not None:
             self._F = simfiles_instance
         else:
-            raise ValueError('One of simfiles_configfile or simfiles_instance'
-                             ' is required.')
+            raise ValueError(
+                "One of simfiles_configfile or simfiles_instance" " is required."
+            )
         self.init_args = dict()
-        self.init_args['obj_id'] = obj_id
-        self.init_args['snap_id'] = snap_id
-        self.init_args['mask_type'] = mask_type
-        self.init_args['mask_args'] = \
-            tuple() if mask_args is None else mask_args
-        self.init_args['mask_kwargs'] = \
-            dict() if mask_kwargs is None else mask_kwargs
-        self.init_args['configfile'] = configfile
-        self.init_args['simfiles_configfile'] = simfiles_configfile
-        self.init_args['verbose'] = verbose
-        self.init_args['ncpu'] = ncpu
-        self.init_args['grouping_ratio'] = grouping_ratio
-        self.init_args['autorecenter_off'] = autorecenter_off
+        self.init_args["obj_id"] = obj_id
+        self.init_args["snap_id"] = snap_id
+        self.init_args["mask_type"] = mask_type
+        self.init_args["mask_args"] = tuple() if mask_args is None else mask_args
+        self.init_args["mask_kwargs"] = dict() if mask_kwargs is None else mask_kwargs
+        self.init_args["configfile"] = configfile
+        self.init_args["simfiles_configfile"] = simfiles_configfile
+        self.init_args["verbose"] = verbose
+        self.init_args["ncpu"] = ncpu
+        self.init_args["grouping_ratio"] = grouping_ratio
+        self.init_args["autorecenter_off"] = autorecenter_off
         self._transform_stack = list()
 
         self._read_config()
@@ -259,33 +260,39 @@ class SimObj(dict):
     def _read_config(self):
 
         try:
-            spec = spec_from_file_location('config', os.path.expanduser(
-                self.init_args['configfile']))
+            spec = spec_from_file_location(
+                "config", os.path.expanduser(self.init_args["configfile"])
+            )
             config = module_from_spec(spec)
             spec.loader.exec_module(config)
         except FileNotFoundError:
             raise FileNotFoundError(
                 "SimObj: configfile '{:s}' not found.".format(
-                    self.init_args['configfile']))
+                    self.init_args["configfile"]
+                )
+            )
 
-        if self.init_args['autorecenter_off']:
+        if self.init_args["autorecenter_off"]:
             self._recenter = dict()
         else:
             try:
-                self._recenter = {self._F._aliases.get(k, k): v
-                                  for k, v in config.recenter.items()}
+                self._recenter = {
+                    self._F._aliases.get(k, k): v for k, v in config.recenter.items()
+                }
             except AttributeError:
                 self._recenter = dict()
 
         try:
-            self._coord_type = {self._F._aliases.get(k, k): v
-                                for k, v in config.coord_type.items()}
+            self._coord_type = {
+                self._F._aliases.get(k, k): v for k, v in config.coord_type.items()
+            }
         except AttributeError:
             self._coord_type = dict()
 
         try:
-            self._box_wrap = {self._F._aliases.get(k, k): v
-                              for k, v in config.box_wrap.items()}
+            self._box_wrap = {
+                self._F._aliases.get(k, k): v for k, v in config.box_wrap.items()
+            }
         except AttributeError:
             self._box_wrap = dict()
 
@@ -300,9 +307,11 @@ class SimObj(dict):
             raise ValueError("SimObj: configfile missing 'masks' definition.")
         self._maskfuncs = dict()
         for key, maskfunc in config.masks.items():
-            self._maskfuncs[key] = maskfunc[self.init_args['mask_type']] \
-                if isinstance(maskfunc, dict) \
+            self._maskfuncs[key] = (
+                maskfunc[self.init_args["mask_type"]]
+                if isinstance(maskfunc, dict)
                 else maskfunc
+            )
 
     @dealias
     def __setattr__(self, key, value):
@@ -310,7 +319,7 @@ class SimObj(dict):
 
     @dealias
     def __getattr__(self, key):
-        if '__' in key:
+        if "__" in key:
             # avoid requesting reserved keys from SimFiles
             raise AttributeError
         try:
@@ -329,50 +338,49 @@ class SimObj(dict):
     @do_recenter
     def _load_key(self, key):
         if key not in set(self._F.fields(aliases=False)):
-            raise KeyError("SimObj: SimFiles member unaware of '"+key+"' key.")
+            raise KeyError("SimObj: SimFiles member unaware of '" + key + "' key.")
 
         mask = self._masks[self._F._extractors[key].keytype]
         if (mask is not None) and (not self._F.share_mode):
             if isinstance(mask, slice):
-                intervals = ((mask.start, mask.stop), )
+                intervals = ((mask.start, mask.stop),)
             elif isinstance(mask, tuple):
                 boolmask = np.zeros(mask[0].max() + 1)
                 boolmask[mask] = True
                 intervals = mask_to_intervals(
-                    boolmask,
-                    grouping_ratio=self.init_args['grouping_ratio']
+                    boolmask, grouping_ratio=self.init_args["grouping_ratio"]
                 )
             elif not mask.any():
-                intervals = ((0, 0), )
+                intervals = ((0, 0),)
             else:
                 intervals = mask_to_intervals(
-                    mask, grouping_ratio=self.init_args['grouping_ratio'])
+                    mask, grouping_ratio=self.init_args["grouping_ratio"]
+                )
             parts = []
             for interval in intervals:
-                loaded_keys = self._F.load((key, ), intervals=(interval, ),
-                                           verbose=self.init_args['verbose'])
+                loaded_keys = self._F.load(
+                    (key,), intervals=(interval,), verbose=self.init_args["verbose"]
+                )
                 if isinstance(mask, slice):
                     parts.append(self._F[key])
                 else:
-                    parts.append(self._F[key][mask[interval[0]: interval[1]]])
+                    parts.append(self._F[key][mask[interval[0] : interval[1]]])
                 for k in loaded_keys:
                     del self._F[k]
             try:
-                self[key] = np.concatenate([part.value for part in parts]) * \
-                    parts[0].unit
+                self[key] = (
+                    np.concatenate([part.value for part in parts]) * parts[0].unit
+                )
             except AttributeError:
                 self[key] = np.concatenate(parts)
 
         elif self._F.share_mode:
-            self._F.load((key, ), verbose=self.init_args['verbose'])
+            self._F.load((key,), verbose=self.init_args["verbose"])
             self[key] = self._F[key][mask]
             # del disabled for share_mode
 
         else:
-            loaded_keys = self._F.load(
-                (key, ),
-                verbose=self.init_args['verbose']
-            )
+            loaded_keys = self._F.load((key,), verbose=self.init_args["verbose"])
             self[key] = self._F[key]
             for k in loaded_keys:
                 del self._F[k]
@@ -383,8 +391,7 @@ class SimObj(dict):
         for condition, field, value in self._extractor_edits:
             for key, extractor in self._F._extractors.items():
                 if condition(extractor, self.init_args):
-                    self._F._extractors[key] = extractor._replace(
-                        **{field: value})
+                    self._F._extractors[key] = extractor._replace(**{field: value})
         return
 
     def rotate(self, axis_angle=None, rotmat=None, L_coords=None):
@@ -422,10 +429,7 @@ class SimObj(dict):
         do_rot = np.eye(3)
 
         if axis_angle is not None:
-            do_rot = rotation_matrix(
-                axis_angle[1],
-                axis=axis_angle[0]
-            ).dot(do_rot)
+            do_rot = rotation_matrix(axis_angle[1], axis=axis_angle[0]).dot(do_rot)
 
         if rotmat is not None:
             do_rot = rotmat.dot(do_rot)
@@ -433,17 +437,13 @@ class SimObj(dict):
         if L_coords is not None:
             mkey, xkey, vkey = L_coords
             do_rot = L_align(
-                self[xkey],
-                self[vkey],
-                self[mkey],
-                frac=.3,
-                Laxis='z'
+                self[xkey], self[vkey], self[mkey], frac=0.3, Laxis="z"
             ).dot(do_rot)
 
         keys = set(self.keys()).intersection(self._coord_type.keys())
         for key in keys:
             self[key] = apply_rotmat(self[key], do_rot)
-        self._transform_stack.append(('R', do_rot))
+        self._transform_stack.append(("R", do_rot))
         return do_rot
 
     def unrotate(self):
@@ -457,10 +457,11 @@ class SimObj(dict):
         """
 
         last_transform = self._transform_stack.pop()
-        if last_transform[0] != 'R':
+        if last_transform[0] != "R":
             self._transform_stack.append(last_transform)
-            raise RuntimeError('Cannot unrotate if last transformation was not'
-                               ' a rotation.')
+            raise RuntimeError(
+                "Cannot unrotate if last transformation was not" " a rotation."
+            )
         do_rot = last_transform[1].T
         keys = set(self.keys()).intersection(self._coord_type.keys())
         for key in keys:
@@ -481,19 +482,16 @@ class SimObj(dict):
             Amount by which to translate, with compatible units.
         """
         keys = set(self.keys()).intersection(
-            {k: v for k, v in self._coord_type.items()
-             if v == translation_type}
+            {k: v for k, v in self._coord_type.items() if v == translation_type}
         )
         for key in keys:
             self[key] += translation
-        self._transform_stack.append(
-            ('T', translation_type, translation)
-        )
+        self._transform_stack.append(("T", translation_type, translation))
         return
 
     def transform(self, transform_stack):
         for tf in transform_stack:
-            {'T': self.translate, 'R': self.rotate}[tf[0]](*tf[1:])
+            {"T": self.translate, "R": self.rotate}[tf[0]](*tf[1:])
 
     def recenter(self, translation_type, new_centre):
         """
